@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 from app.services.embeddings import Embedder
+from app.services.llm import ChatModel
 from app.services.vectorstore import VectorStore
 
 
@@ -27,7 +28,13 @@ def get_vector_store(request: Request) -> VectorStore:
     return cast(VectorStore, request.app.state.vector_store)
 
 
+def get_chat_model(request: Request) -> ChatModel:
+    """The app's chat model, built at startup; tests swap it with `dependency_overrides`."""
+    return cast(ChatModel, request.app.state.chat_model)
+
+
 AppSettings = Annotated[Settings, Depends(get_app_settings)]
 SessionFactory = Annotated[sessionmaker[Session], Depends(get_session_factory)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 VectorStoreDep = Annotated[VectorStore, Depends(get_vector_store)]
+ChatModelDep = Annotated[ChatModel, Depends(get_chat_model)]

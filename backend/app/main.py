@@ -12,6 +12,7 @@ from app.db.session import create_db_engine, create_session_factory
 from app.logging_config import configure_logging
 from app.services.embeddings import create_embedder, ensure_chunk_fits
 from app.services.ingestion import fail_interrupted_documents
+from app.services.llm import create_chat_model
 from app.services.vectorstore import create_vector_store
 
 logger = logging.getLogger(__name__)
@@ -28,9 +29,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ensure_chunk_fits(embedder, settings.chunk_size_tokens)
         app.state.embedder = embedder
         app.state.vector_store = create_vector_store(settings, embedder)
+        # A missing key for the chosen LLM provider fails here too, not on the first question
+        app.state.chat_model = create_chat_model(settings)
         if interrupted := fail_interrupted_documents(app.state.session_factory):
             logger.warning("marked interrupted documents as failed", extra={"count": interrupted})
         yield
+        await app.state.chat_model.aclose()
 
     app = FastAPI(title="DocQA Support Agent", lifespan=lifespan)
     app.state.settings = settings

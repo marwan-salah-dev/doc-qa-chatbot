@@ -50,7 +50,7 @@ Key design points:
 - [x] **8. Upload API:** (call `ensure_chunk_fits(embedder, settings.chunk_size_tokens)` at startup/ingestion, and chunk with `count_tokens=embedder.count_tokens`) `POST /workspaces/{id}/documents` (type and size validation), background ingestion, status listing, delete, `GET .../file` for preview, and re-index. Tests: upload → ready → query finds chunks; dedup; delete removes vectors.
 
 ### Answering
-- [ ] **9. LLM providers:** `OpenAIChat`, `AnthropicChat` and `FakeChat`, all with a streaming interface, and env-configurable models. Tests use mocked SDK streams.
+- [x] **9. LLM providers:** `OpenAIChat`, `AnthropicChat` and `FakeChat`, all with a streaming interface, and env-configurable models. Tests use mocked SDK streams. Closing a stream early closes the provider stream; per-call token usage goes to an `on_usage` callback (for step 18's spend cap); SDK errors map to our `LLM*Error` types; API keys are `SecretStr`.
 - [ ] **10. RAG service:** question condensing, retrieval + threshold, prompt build, `[n]` citation parsing and mapping. Tests: grounded answer with citations; off-topic question → refusal without an LLM call; citations that don't exist are dropped.
 - [ ] **11. Chat API:** conversation CRUD, SSE `POST /conversations/{id}/messages`, and saving the user and assistant messages with their citations. Tests: SSE event sequence and persisted history.
 

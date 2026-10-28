@@ -2,19 +2,23 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Chat model
+    # Chat model. Keys are SecretStr so a repr, log line or traceback shows ********** instead.
     llm_provider: Literal["anthropic", "openai"] = "anthropic"
-    anthropic_api_key: str = ""
+    anthropic_api_key: SecretStr = SecretStr("")
     anthropic_model: str = "claude-sonnet-5-5"
-    openai_api_key: str = ""
-    openai_model: str = ""
+    anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+    openai_api_key: SecretStr = SecretStr("")
+    openai_model: str = "gpt-5-mini"
+    llm_timeout_seconds: float = Field(default=60, gt=0)
+    llm_max_retries: int = Field(default=2, ge=0)
+    llm_max_output_tokens: int = Field(default=1024, gt=0)
 
     # Embeddings
     embedding_provider: Literal["local", "openai"] = "local"
@@ -35,7 +39,7 @@ class Settings(BaseSettings):
 
     # Web
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
-    admin_api_key: str = ""
+    admin_api_key: SecretStr = SecretStr("")
 
     # Logging
     log_level: str = "INFO"

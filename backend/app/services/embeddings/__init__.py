@@ -8,9 +8,10 @@ from app.services.embeddings.openai import OpenAIEmbedder
 def create_embedder(settings: Settings) -> Embedder:
     """Pick the embedder named by EMBEDDING_PROVIDER."""
     if settings.embedding_provider == "openai":
-        if not settings.openai_api_key:
+        api_key = settings.openai_api_key.get_secret_value()
+        if not api_key:
             raise ValueError("EMBEDDING_PROVIDER=openai needs OPENAI_API_KEY to be set")
-        return OpenAIEmbedder(settings.openai_embedding_model, api_key=settings.openai_api_key)
+        return OpenAIEmbedder(settings.openai_embedding_model, api_key=api_key)
     return LocalEmbedder(settings.local_embedding_model)
 
 
