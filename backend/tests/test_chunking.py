@@ -67,10 +67,63 @@ def test_zero_overlap_gives_disjoint_chunks():
     assert len(all_words) == len(set(all_words))
 
 
-def test_single_oversized_word_still_makes_progress():
-    chunks = chunk_segments([txt_seg("x" * 5000, 1)], max_tokens=10, overlap_tokens=2)
-    assert len(chunks) == 1
-    assert chunks[0].text == "x" * 5000
+def test_oversized_word_is_split_so_no_chunk_exceeds_the_limit():
+    chunks = chunk_segments([txt_seg("x" * 5000, 1)], max_tokens=10, overlap_tokens=0)
+    assert len(chunks) > 1
+    assert all(estimate_tokens(c.text) <= 10 for c in chunks)
+    assert "".join(c.text for c in chunks) == "x" * 5000
+
+
+# --- injected token counter -----------------------------------------------------------------
+
+
+def test_chunker_uses_the_injected_counter_instead_of_the_estimator():
+    def three_per_word(text: str) -> int:
+        return 3 * len(text.split())
+
+    chunks = chunk_segments(
+        [txt_seg(words(100), 1)], max_tokens=30, overlap_tokens=0, count_tokens=three_per_word
+    )
+    assert len(chunks) == 10
+    assert all(len(c.text.split()) == 10 for c in chunks)
+
+
+def test_counter_overhead_like_cls_and_sep_is_budgeted():
+    def with_special_tokens(text: str) -> int:
+        return 3 * len(text.split()) + 2  # like a tokenizer that adds [CLS] and [SEP]
+
+    chunks = chunk_segments(
+        [txt_seg(words(100), 1)], max_tokens=32, overlap_tokens=0, count_tokens=with_special_tokens
+    )
+    assert [with_special_tokens(c.text) for c in chunks] == [32] * 10
+
+
+def test_counter_overhead_must_leave_room_for_text():
+    def heavy_overhead(text: str) -> int:
+        return 10 + len(text.split())
+
+    with pytest.raises(ValueError, match="overhead"):
+        chunk_segments(
+            [txt_seg("a b", 1)], max_tokens=10, overlap_tokens=0, count_tokens=heavy_overhead
+        )
+
+
+def test_a_chunk_that_counts_over_the_limit_is_split_further():
+    # Counting characters, spaces included, is not additive over words, so the greedy pass
+    # overshoots (5 words of 4 chars = 20, but "abcd abcd abcd abcd abcd" is 24 characters).
+    chunks = chunk_segments(
+        [txt_seg(" ".join(["abcd"] * 30), 1)], max_tokens=20, overlap_tokens=0, count_tokens=len
+    )
+    assert all(len(c.text) <= 20 for c in chunks)
+    assert sum(len(c.text.split()) for c in chunks) == 30  # nothing lost or repeated
+
+
+def test_oversized_word_is_split_using_the_injected_counter():
+    chunks = chunk_segments(
+        [txt_seg("y" * 500, 1)], max_tokens=40, overlap_tokens=0, count_tokens=len
+    )
+    assert all(len(c.text) <= 40 for c in chunks)
+    assert "".join(c.text for c in chunks) == "y" * 500
 
 
 def test_chunk_on_one_pdf_page_keeps_single_page():

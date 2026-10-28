@@ -1,8 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -18,8 +18,12 @@ class Settings(BaseSettings):
 
     # Embeddings
     embedding_provider: Literal["local", "openai"] = "local"
-    local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    local_embedding_model: str = "BAAI/bge-small-en-v1.5"
     openai_embedding_model: str = "text-embedding-3-small"
+
+    # Chunking (estimated tokens; keep chunk_size_tokens under the embedding model's input limit)
+    chunk_size_tokens: int = Field(default=350, gt=0)
+    chunk_overlap_tokens: int = Field(default=50, ge=0)
 
     # Storage
     data_dir: Path = Path("./data")
@@ -33,6 +37,12 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_json: bool = True
+
+    @model_validator(mode="after")
+    def check_chunk_overlap(self) -> Self:
+        if self.chunk_overlap_tokens >= self.chunk_size_tokens:
+            raise ValueError("CHUNK_OVERLAP_TOKENS must be smaller than CHUNK_SIZE_TOKENS")
+        return self
 
     @field_validator("cors_origins", mode="before")
     @classmethod

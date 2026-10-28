@@ -7,10 +7,15 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "charset-normalizer>=3.5.2",
     "fastapi>=0.162.0",
+    "openai>=3.40.0",
     "pydantic-settings>=2.16.2",
     "pypdf>=6.21.4",
     "python-docx>=1.2.0",
+    "sentence-transformers>=6.2.0",
     "sqlalchemy>=2.1.6",
+    "tokenizers>=0.23.3",
+    # Direct dependency only so [tool.uv.sources] below can pin where it comes from
+    "torch>=2.15.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -26,10 +31,23 @@ dev = [
 # This is an application, not a library: don't build or install it as a package
 package = false
 
+# On Linux (Docker, the VPS) take CPU-only torch: the default Linux wheel drags in several GB
+# of nvidia-* CUDA packages. Windows and macOS wheels from PyPI are already CPU-only.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers -m 'not slow'"
+markers = [
+    "slow: downloads and runs the real embedding model (run with: uv run pytest -m slow)",
+]
 
 [tool.pyright]
 include = ["app", "tests"]
