@@ -39,7 +39,7 @@ Key design points:
 
 ### Backend foundation
 - [x] **1. Scaffold:** monorepo dirs, `.gitignore`, `.env.example`, uv project, ruff + pytest config, README skeleton, `master`→`main` rename, and `.claude/settings.json`. That file denies Read/Edit of `.env` and `.env.local` at any depth plus the obvious shell reads (this can't cover every possible command), and asks before package installs.
-- [ ] **2. Config + app:** `pydantic-settings` config, FastAPI app factory, CORS, `/health`, structured logging. Test: health returns OK.
+- [x] **2. Config + app:** `pydantic-settings` config, FastAPI app factory, CORS, `/health`, structured logging. Test: health returns OK.
 - [ ] **3. Database:** SQLAlchemy models (Workspace, Document, Conversation, Message, Citation JSON) on SQLite, and workspace CRUD routes. Tests: CRUD with a temporary DB.
 
 ### Ingestion pipeline
