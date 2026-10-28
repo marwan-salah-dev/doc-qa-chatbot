@@ -12,8 +12,9 @@ class ParseError(Exception):
 class Location:
     """Where a piece of text came from. Which fields are set depends on `kind`.
 
-    PDF: `page` (1-based). DOCX: `heading` (nearest heading above, if any) and the
-    paragraph range `start`..`end` (1-based, counting non-empty paragraphs and table rows).
+    PDF: `page` (1-based), plus `page_end` when a chunk spans several pages.
+    DOCX: `heading` (nearest heading above, if any) and the paragraph range `start`..`end`
+    (1-based, counting non-empty paragraphs and table rows).
     TXT: the line range `start`..`end` (1-based).
     """
 
@@ -22,10 +23,13 @@ class Location:
     heading: str | None = None
     start: int | None = None
     end: int | None = None
+    page_end: int | None = None
 
     def label(self) -> str:
         """Human-readable location, worded honestly for the file type."""
         if self.kind == "pdf":
+            if self.page_end is not None and self.page_end != self.page:
+                return f"pages {self.page}-{self.page_end}"
             return f"page {self.page}"
         span = f"{self.start}" if self.start == self.end else f"{self.start}-{self.end}"
         if self.kind == "txt":

@@ -44,7 +44,7 @@ Key design points:
 
 ### Ingestion pipeline
 - [x] **4. Parsers:** PDF (PyMuPDF, per page), DOCX (python-docx, tracks headings and paragraphs), TXT (encoding detection, line numbers). Each one outputs `Segment(text, location)`. Tests: fixture files for each type, an empty/corrupt file, and an image-only PDF that should give a clear "no text found" error.
-- [ ] **5. Chunker:** token-aware, about 500 tokens with overlap. It keeps location metadata and joins page ranges when a chunk crosses a page. Tests: boundaries, overlap, metadata.
+- [x] **5. Chunker:** token-aware, about 500 tokens with overlap. It keeps location metadata and joins page ranges when a chunk crosses a page. Tests: boundaries, overlap, metadata.
 - [ ] **6. Embedders:** `LocalEmbedder`, `OpenAIEmbedder` and `FakeEmbedder`, behind a factory. Tests: the factory and the fake (OpenAI is mocked).
 - [ ] **7. Vector store:** Chroma wrapper for add, query (with scores) and delete-by-document, naming collections per workspace. Tests use Chroma's ephemeral client.
 - [ ] **8. Upload API:** `POST /workspaces/{id}/documents` (type and size validation), background ingestion, status listing, delete, `GET .../file` for preview, and re-index. Tests: upload → ready → query finds chunks; dedup; delete removes vectors.
