@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import AppSettings, VectorStoreDep
 from app.api.schemas import WorkspaceCreate, WorkspaceOut, WorkspaceUpdate
 from app.db.models import Workspace
 from app.db.session import get_db
+from app.services.storage import delete_workspace_files
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -47,9 +49,13 @@ def rename_workspace(workspace_id: str, body: WorkspaceUpdate, db: DbSession) ->
 
 
 @router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_workspace(workspace_id: str, db: DbSession) -> Response:
-    # Vectors and stored files are cleaned up here once they exist (steps 7-8)
+def delete_workspace(
+    workspace_id: str, db: DbSession, settings: AppSettings, store: VectorStoreDep
+) -> Response:
     workspace = get_workspace_or_404(db, workspace_id)
+    # Same order as deleting a document: vectors, then rows (documents cascade), then files
+    store.delete_workspace(workspace_id)
     db.delete(workspace)
     db.commit()
+    delete_workspace_files(settings.data_dir, workspace_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

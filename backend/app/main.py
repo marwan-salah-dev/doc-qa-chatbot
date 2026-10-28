@@ -1,14 +1,18 @@
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, workspaces
+from app.api.routes import documents, health, workspaces
 from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
 from app.logging_config import configure_logging
+from app.services.embeddings import create_embedder, ensure_chunk_fits
+from app.services.ingestion import fail_interrupted_documents
+from app.services.vectorstore import create_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +21,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_json)
 
-    app = FastAPI(title="DocQA Support Agent")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        embedder = create_embedder(settings)
+        # Bad chunking config fails here, at startup, not halfway through someone's upload
+        ensure_chunk_fits(embedder, settings.chunk_size_tokens)
+        app.state.embedder = embedder
+        app.state.vector_store = create_vector_store(settings, embedder)
+        if interrupted := fail_interrupted_documents(app.state.session_factory):
+            logger.warning("marked interrupted documents as failed", extra={"count": interrupted})
+        yield
+
+    app = FastAPI(title="DocQA Support Agent", lifespan=lifespan)
     app.state.settings = settings
     app.state.engine = create_db_engine(settings.data_dir)
     app.state.session_factory = create_session_factory(app.state.engine)
@@ -48,4 +63,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(workspaces.router)
+    app.include_router(documents.router)
     return app

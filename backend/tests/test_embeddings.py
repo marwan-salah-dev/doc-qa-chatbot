@@ -1,4 +1,8 @@
 import math
+import threading
+import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from typing import Any
 
@@ -186,6 +190,44 @@ def test_local_embedder_loads_model_lazily_and_only_once():
     assert loads == []
     embedder.embed_documents(["a"])
     embedder.embed_query("b")
+    assert loads == ["BAAI/bge-small-en-v1.5"]
+
+
+def run_together(call: Callable[[], object], threads: int = 8) -> None:
+    """Start `call` on several threads at the same moment, as concurrent uploads would."""
+    barrier = threading.Barrier(threads)
+
+    def worker(_: int) -> object:
+        barrier.wait()
+        return call()
+
+    with ThreadPoolExecutor(threads) as pool:
+        list(pool.map(worker, range(threads)))
+
+
+def test_local_embedder_loads_model_once_under_concurrent_calls():
+    loads: list[str] = []
+
+    def slow_loader(name: str) -> StubSentenceModel:
+        loads.append(name)
+        time.sleep(0.05)  # loading the real model takes seconds
+        return StubSentenceModel()
+
+    embedder = LocalEmbedder("BAAI/bge-small-en-v1.5", model_loader=slow_loader)
+    run_together(lambda: embedder.embed_query("q"))
+    assert loads == ["BAAI/bge-small-en-v1.5"]
+
+
+def test_local_embedder_loads_tokenizer_once_under_concurrent_calls():
+    loads: list[str] = []
+
+    def slow_loader(name: str) -> StubTokenizer:
+        loads.append(name)
+        time.sleep(0.05)
+        return StubTokenizer()
+
+    embedder = LocalEmbedder("BAAI/bge-small-en-v1.5", tokenizer_loader=slow_loader)
+    run_together(lambda: embedder.count_tokens("a b"))
     assert loads == ["BAAI/bge-small-en-v1.5"]
 
 

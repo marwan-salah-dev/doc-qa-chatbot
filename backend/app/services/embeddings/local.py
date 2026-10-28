@@ -1,3 +1,4 @@
+import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -39,6 +40,11 @@ class LocalEmbedder:
         self._tokenizer_loader = tokenizer_loader
         self._model: Any = None
         self._tokenizer: Any = None
+        # Uploads are indexed on a threadpool; without these, two arriving together could both
+        # load the model, doubling the memory spike. One lock each, so counting tokens never
+        # waits for the much slower model load.
+        self._model_lock = threading.Lock()
+        self._tokenizer_lock = threading.Lock()
         self._query_prefix = BGE_QUERY_PREFIX if "bge-" in model_name.lower() else ""
 
     @property
@@ -48,11 +54,13 @@ class LocalEmbedder:
     def count_tokens(self, text: str) -> int:
         """Real token count from the model's own tokenizer, [CLS] and [SEP] included."""
         if self._tokenizer is None:
-            tokenizer = self._tokenizer_loader(self.model_name)
-            # The saved config may cap or pad inputs at 512; we want the true, full length.
-            tokenizer.no_truncation()
-            tokenizer.no_padding()
-            self._tokenizer = tokenizer
+            with self._tokenizer_lock:
+                if self._tokenizer is None:  # another thread may have loaded it while we waited
+                    tokenizer = self._tokenizer_loader(self.model_name)
+                    # The saved config may cap or pad inputs at 512; we want the true length.
+                    tokenizer.no_truncation()
+                    tokenizer.no_padding()
+                    self._tokenizer = tokenizer  # only published once fully configured
         return len(self._tokenizer.encode(text).ids)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -65,6 +73,8 @@ class LocalEmbedder:
         if not texts:
             return []
         if self._model is None:  # loading takes seconds, so only do it when first needed
-            self._model = self._model_loader(self.model_name)
+            with self._model_lock:
+                if self._model is None:  # another thread may have loaded it while we waited
+                    self._model = self._model_loader(self.model_name)
         vectors = self._model.encode(texts, normalize_embeddings=True)
         return [[float(x) for x in vector] for vector in vectors]

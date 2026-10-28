@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     chunk_size_tokens: int = Field(default=350, gt=0)
     chunk_overlap_tokens: int = Field(default=50, ge=0)
 
+    # Uploads
+    max_upload_mb: int = Field(default=20, gt=0)
+
     # Storage
     data_dir: Path = Path("./data")
     chroma_host: str = ""
