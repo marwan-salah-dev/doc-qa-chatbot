@@ -28,6 +28,7 @@ def create_chat_model(settings: Settings) -> ChatModel:
         return OpenAIChat(
             settings.openai_model,
             api_key=api_key,
+            base_url=settings.openai_base_url,
             timeout_seconds=settings.llm_timeout_seconds,
             max_retries=settings.llm_max_retries,
             max_output_tokens=settings.llm_max_output_tokens,

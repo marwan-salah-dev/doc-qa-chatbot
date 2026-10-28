@@ -47,12 +47,12 @@ On this Windows machine uv was installed through winget. A shell opened before t
 - **Don't commit** unless the user asks.
 - **Design choices:** pick the recommended option and mention it. Only ask the user about choices that are expensive or hard to undo.
 - **Package installs need approval.** `.claude/settings.json` asks before installs. Never try to get around that.
-- **Never read or print `.env` files.** Use `.env.example` to learn the configuration.
+- **Never read or print `.env` files.** Use `backend/.env.example` to learn the configuration.
 
 ## Conventions
 
 - **Tests:** they never call paid APIs. Use the `Fake*` providers (fake embedder and fake chat model) and mocked SDKs.
-- **Configuration:** comes from environment variables through `pydantic-settings`. Every new setting must also be added to `.env.example` with a comment.
+- **Configuration:** comes from environment variables through `pydantic-settings`. Every new setting must also be added to `backend/.env.example` with a comment (a test checks this). The app loads `backend/.env` wherever commands are run from.
 - **Ruff rules:** E, W, F, I, B, UP, SIM, RUF, with line length 100. Keep `ruff check` and `ruff format --check` clean.
 - **Type checking:** pyright in basic mode must report 0 errors.
 - **Licenses:** avoid GPL/AGPL dependencies, since clients may reuse this code (PDF parsing uses pypdf, BSD, not PyMuPDF).

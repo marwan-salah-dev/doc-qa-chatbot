@@ -37,8 +37,8 @@ frontend/   React app (added in a later step)
 Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), Node 20+.
 
 ```bash
-cp .env.example .env
 cd backend
+cp .env.example .env   # then fill in your API key
 uv sync
 uv run pytest
 uv run ruff check .

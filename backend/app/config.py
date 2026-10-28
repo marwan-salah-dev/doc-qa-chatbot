@@ -5,9 +5,12 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+# backend/.env, so the same file loads whether commands run from backend/ or the repo root
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     # Chat model. Keys are SecretStr so a repr, log line or traceback shows ********** instead.
     llm_provider: Literal["anthropic", "openai"] = "anthropic"
@@ -16,6 +19,8 @@ class Settings(BaseSettings):
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
     openai_api_key: SecretStr = SecretStr("")
     openai_model: str = "gpt-5-mini"
+    # Empty = api.openai.com; set to use an OpenAI-compatible provider such as Groq
+    openai_base_url: str = ""
     llm_timeout_seconds: float = Field(default=60, gt=0)
     llm_max_retries: int = Field(default=2, ge=0)
     llm_max_output_tokens: int = Field(default=1024, gt=0)

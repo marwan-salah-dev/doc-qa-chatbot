@@ -24,7 +24,10 @@ def _map_error(exc: openai.APIError | httpx2.TransportError) -> LLMError:
 
 
 class OpenAIChat:
-    """A GPT model through Chat Completions. Retries work as in `AnthropicChat`."""
+    """A GPT model through Chat Completions. Retries work as in `AnthropicChat`.
+
+    `base_url` points the client at an OpenAI-compatible provider (e.g. Groq); empty means OpenAI.
+    """
 
     def __init__(
         self,
@@ -32,6 +35,7 @@ class OpenAIChat:
         api_key: str = "",
         client: Any = None,
         *,
+        base_url: str = "",
         timeout_seconds: float = 60.0,
         max_retries: int = 2,
         max_output_tokens: int = 1024,
@@ -39,6 +43,7 @@ class OpenAIChat:
         if client is None:
             client = openai.AsyncOpenAI(
                 api_key=api_key,
+                base_url=base_url or None,
                 timeout=openai.Timeout(timeout_seconds, connect=CONNECT_TIMEOUT_SECONDS),
                 max_retries=max_retries,
             )

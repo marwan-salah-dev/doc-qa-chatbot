@@ -196,6 +196,29 @@ def test_factory_builds_openai_with_the_configured_model():
     assert chat.model_name == "gpt-test"
 
 
+def test_openai_uses_the_normal_endpoint_when_no_base_url_is_set(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # The SDK reads OPENAI_BASE_URL from the environment itself, so clear it for this test.
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    chat = create_chat_model(make_settings(llm_provider="openai", openai_api_key=FAKE_KEY))
+    assert isinstance(chat, OpenAIChat)
+    assert str(chat._client.base_url) == "https://api.openai.com/v1/"
+
+
+def test_openai_base_url_points_the_client_at_a_compatible_provider():
+    # e.g. Groq, which speaks the same Chat Completions API
+    chat = create_chat_model(
+        make_settings(
+            llm_provider="openai",
+            openai_api_key=FAKE_KEY,
+            openai_base_url="https://api.groq.com/openai/v1",
+        )
+    )
+    assert isinstance(chat, OpenAIChat)
+    assert str(chat._client.base_url) == "https://api.groq.com/openai/v1/"
+
+
 @pytest.mark.parametrize(
     ("provider", "env_var"), [("anthropic", "ANTHROPIC_API_KEY"), ("openai", "OPENAI_API_KEY")]
 )
