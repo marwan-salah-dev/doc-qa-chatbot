@@ -51,7 +51,7 @@ Key design points:
 
 ### Answering
 - [x] **9. LLM providers:** `OpenAIChat`, `AnthropicChat` and `FakeChat`, all with a streaming interface, and env-configurable models. Tests use mocked SDK streams. Closing a stream early closes the provider stream; per-call token usage goes to an `on_usage` callback (for step 18's spend cap); SDK errors map to our `LLM*Error` types; API keys are `SecretStr`.
-- [ ] **10. RAG service:** question condensing, retrieval + threshold, prompt build, `[n]` citation parsing and mapping. Tests: grounded answer with citations; off-topic question → refusal without an LLM call; citations that don't exist are dropped.
+- [x] **10. RAG service:** question condensing, retrieval + threshold, prompt build, `[n]` citation parsing and mapping. Tests: grounded answer with citations; off-topic question → refusal without an LLM call; citations that don't exist are dropped. Output is an event stream (sources → answer deltas → done with only the cited sources, `refused`, `uncited`). The whole answer call (system, history, sources, question, reserved output) fits `RAG_TOKEN_BUDGET`, trimming history before sources, so a follow-up stays under Groq's free 8K tokens/min. `[n]` markers are stripped from old answers in history, and document text is fenced as data against prompt injection.
 - [ ] **11. Chat API:** conversation CRUD, SSE `POST /conversations/{id}/messages`, and saving the user and assistant messages with their citations. Tests: SSE event sequence and persisted history.
 
 ### Frontend

@@ -58,5 +58,31 @@ def test_bad_chunk_settings_are_rejected(size: int, overlap: int):
         make_settings(chunk_size_tokens=size, chunk_overlap_tokens=overlap)
 
 
+def test_rag_defaults_fit_the_free_groq_tier():
+    settings = make_settings()
+    assert settings.rag_top_k == 6
+    assert settings.rag_min_score == 0.5
+    assert settings.rag_token_budget == 5500
+    assert settings.rag_history_tokens == 1000
+    # Condense call (history + ~300 for prompt, question and output) plus the answer call
+    assert settings.rag_history_tokens + 300 + settings.rag_token_budget < 8000
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"rag_top_k": 0},
+        {"rag_min_score": -0.1},
+        {"rag_min_score": 1.1},
+        {"rag_token_budget": 0},
+        {"rag_history_tokens": -1},
+        {"rag_token_budget": 1024, "llm_max_output_tokens": 1024},
+    ],
+)
+def test_bad_rag_settings_are_rejected(overrides: dict[str, object]):
+    with pytest.raises(ValidationError):
+        make_settings(**overrides)
+
+
 def test_default_local_embedding_model_is_bge_small():
     assert make_settings().local_embedding_model == "BAAI/bge-small-en-v1.5"

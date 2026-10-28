@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     chunk_size_tokens: int = Field(default=350, gt=0)
     chunk_overlap_tokens: int = Field(default=50, ge=0)
 
+    # Answering (RAG)
+    rag_top_k: int = Field(default=6, gt=0)
+    rag_min_score: float = Field(default=0.5, ge=0, le=1)
+    rag_token_budget: int = Field(default=5500, gt=0)
+    rag_history_tokens: int = Field(default=1000, ge=0)
+
     # Uploads
     max_upload_mb: int = Field(default=20, gt=0)
 
@@ -54,6 +60,14 @@ class Settings(BaseSettings):
     def check_chunk_overlap(self) -> Self:
         if self.chunk_overlap_tokens >= self.chunk_size_tokens:
             raise ValueError("CHUNK_OVERLAP_TOKENS must be smaller than CHUNK_SIZE_TOKENS")
+        return self
+
+    @model_validator(mode="after")
+    def check_rag_token_budget(self) -> Self:
+        if self.rag_token_budget <= self.llm_max_output_tokens:
+            raise ValueError(
+                "RAG_TOKEN_BUDGET must be larger than LLM_MAX_OUTPUT_TOKENS (it includes them)"
+            )
         return self
 
     @field_validator("cors_origins", mode="before")
