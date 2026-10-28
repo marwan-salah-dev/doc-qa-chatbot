@@ -40,7 +40,7 @@ Key design points:
 ### Backend foundation
 - [x] **1. Scaffold:** monorepo dirs, `.gitignore`, `.env.example`, uv project, ruff + pytest config, README skeleton, `master`→`main` rename, and `.claude/settings.json`. That file denies Read/Edit of `.env` and `.env.local` at any depth plus the obvious shell reads (this can't cover every possible command), and asks before package installs.
 - [x] **2. Config + app:** `pydantic-settings` config, FastAPI app factory, CORS, `/health`, structured logging. Test: health returns OK.
-- [ ] **3. Database:** SQLAlchemy models (Workspace, Document, Conversation, Message, Citation JSON) on SQLite, and workspace CRUD routes. Tests: CRUD with a temporary DB.
+- [x] **3. Database:** SQLAlchemy models (Workspace, Document, Conversation, Message, Citation JSON) on SQLite, and workspace CRUD routes. Tests: CRUD with a temporary DB.
 
 ### Ingestion pipeline
 - [ ] **4. Parsers:** PDF (PyMuPDF, per page), DOCX (python-docx, tracks headings and paragraphs), TXT (encoding detection, line numbers). Each one outputs `Segment(text, location)`. Tests: fixture files for each type, an empty/corrupt file, and an image-only PDF that should give a clear "no text found" error.

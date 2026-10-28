@@ -5,8 +5,9 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health
+from app.api.routes import health, workspaces
 from app.config import Settings, get_settings
+from app.db.session import create_db_engine, create_session_factory
 from app.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="DocQA Support Agent")
     app.state.settings = settings
+    app.state.engine = create_db_engine(settings.data_dir)
+    app.state.session_factory = create_session_factory(app.state.engine)
 
     app.add_middleware(
         CORSMiddleware,
@@ -44,7 +47,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     app.include_router(health.router)
+    app.include_router(workspaces.router)
     return app
-
-
-app = create_app()

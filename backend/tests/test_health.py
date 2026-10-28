@@ -1,24 +1,17 @@
 import json
 import logging
 
-from fastapi.testclient import TestClient
-
 from app.config import Settings
 from app.logging_config import JsonFormatter
-from app.main import create_app
 
 
-def make_client(**overrides: object) -> TestClient:
-    return TestClient(create_app(Settings(_env_file=None, **overrides)))
-
-
-def test_health_returns_ok():
-    response = make_client().get("/health")
+def test_health_returns_ok(client):
+    response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_cors_allows_configured_origin_only():
+def test_cors_allows_configured_origin_only(make_client):
     client = make_client(cors_origins="http://a.test, http://b.test")
     allowed = client.get("/health", headers={"Origin": "http://b.test"})
     denied = client.get("/health", headers={"Origin": "http://evil.test"})
