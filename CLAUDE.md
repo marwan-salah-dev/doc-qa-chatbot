@@ -36,13 +36,14 @@ uv sync                   # install/update dependencies into backend/.venv
 uv run pytest             # run the test suite
 uv run ruff check .       # lint
 uv run ruff format .      # format (use --check to verify only)
+uv run pyright            # type check (basic mode, configured in pyproject.toml)
 ```
 
 On this Windows machine uv was installed through winget. A shell opened before that install may not have `uv` on PATH yet.
 
 ## Working agreement
 
-- **One step at a time.** After each step: run the tests (and ruff), explain in plain English what was built and why, suggest a commit message, and stop until the user says "continue".
+- **One step at a time.** After each step: run the tests, ruff and pyright, explain in plain English what was built and why, suggest a commit message, and stop until the user says "continue".
 - **Don't commit** unless the user asks.
 - **Design choices:** pick the recommended option and mention it. Only ask the user about choices that are expensive or hard to undo.
 - **Package installs need approval.** `.claude/settings.json` asks before installs. Never try to get around that.
@@ -53,3 +54,5 @@ On this Windows machine uv was installed through winget. A shell opened before t
 - **Tests:** they never call paid APIs. Use the `Fake*` providers (fake embedder and fake chat model) and mocked SDKs.
 - **Configuration:** comes from environment variables through `pydantic-settings`. Every new setting must also be added to `.env.example` with a comment.
 - **Ruff rules:** E, W, F, I, B, UP, SIM, RUF, with line length 100. Keep `ruff check` and `ruff format --check` clean.
+- **Type checking:** pyright in basic mode must report 0 errors.
+- **Licenses:** avoid GPL/AGPL dependencies, since clients may reuse this code (PDF parsing uses pypdf, BSD, not PyMuPDF).

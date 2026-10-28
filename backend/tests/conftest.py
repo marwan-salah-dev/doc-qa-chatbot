@@ -14,7 +14,9 @@ def make_client(tmp_path: Path) -> Callable[..., TestClient]:
 
     def factory(**overrides: object) -> TestClient:
         overrides.setdefault("data_dir", tmp_path)
-        return TestClient(create_app(Settings(_env_file=None, **overrides)))
+        # _env_file is a runtime-only pydantic-settings argument that pyright can't see
+        settings = Settings(_env_file=None, **overrides)  # pyright: ignore[reportCallIssue]
+        return TestClient(create_app(settings))
 
     return factory
 

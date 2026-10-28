@@ -22,7 +22,8 @@ def test_cors_allows_configured_origin_only(make_client):
 def test_settings_defaults_and_env(monkeypatch):
     monkeypatch.setenv("EMBEDDING_PROVIDER", "openai")
     monkeypatch.setenv("CORS_ORIGINS", "http://x.test,http://y.test")
-    settings = Settings(_env_file=None)
+    # _env_file is a runtime-only pydantic-settings argument that pyright can't see
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     assert settings.embedding_provider == "openai"
     assert settings.cors_origins == ["http://x.test", "http://y.test"]
     assert settings.llm_provider == "anthropic"
