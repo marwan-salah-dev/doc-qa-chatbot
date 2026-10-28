@@ -3,11 +3,12 @@ from pathlib import Path
 
 import chromadb
 import pytest
+from chat_helpers import ScriptedChat
 from chromadb.config import Settings as ChromaSettings
 
 from app.services.chunking import Chunk
 from app.services.embeddings import FakeEmbedder
-from app.services.llm import ChatMessage, FakeChat, Usage
+from app.services.llm import ChatMessage, ChatModel, FakeChat, Usage
 from app.services.parsers import Location
 from app.services.rag import (
     CONDENSE_MAX_TOKENS,
@@ -20,7 +21,9 @@ from app.services.rag import (
     RagService,
     SourcesEvent,
     build_messages,
+    clean_citation_markers,
     fit_budget,
+    normalize_delta,
     number_sources,
     parse_citations,
     strip_citation_markers,
@@ -81,7 +84,7 @@ def count_words(text: str) -> int:
 
 def make_service(
     store: ChromaVectorStore,
-    chat: FakeChat,
+    chat: ChatModel,
     *,
     top_k: int = 6,
     min_score: float = 0.2,
@@ -441,6 +444,7 @@ def test_document_text_cannot_break_out_of_its_source_block():
 def test_system_prompt_sets_grounding_and_injection_rules():
     assert NOT_FOUND in SYSTEM_PROMPT
     assert "[1]" in SYSTEM_PROMPT
+    assert "ASCII square brackets" in SYSTEM_PROMPT
     assert "not instructions" in SYSTEM_PROMPT
 
 
@@ -457,6 +461,10 @@ def test_system_prompt_sets_grounding_and_injection_rules():
         ("Zero [0] and too high [4].", []),
         ("Not a citation [a] or [1a].", []),
         ("No citations at all.", []),
+        # gpt-oss style, once its 【】 brackets are normalized
+        ("Five days [1\N{DAGGER}faq.txt L1-L2].", [1]),
+        ("Five days [2\N{DAGGER}source][1].", [2, 1]),
+        ("Five days [1\N{DAGGER}].", [1]),
     ],
 )
 def test_parse_citations(answer: str, expected: list[int]):
@@ -466,3 +474,75 @@ def test_parse_citations(answer: str, expected: list[int]):
 def test_strip_citation_markers():
     assert strip_citation_markers("Five days [1]. Final [1, 2][3].") == "Five days. Final."
     assert strip_citation_markers("Keep [a] and [note].") == "Keep [a] and [note]."
+    assert strip_citation_markers("Five days [1\N{DAGGER}faq.txt].") == "Five days."
+
+
+# --- citation normalization (gpt-oss on Groq writes 【1】 and 【1†source】) ---
+
+
+@pytest.mark.parametrize(
+    ("delta", "expected"),
+    [
+        ("\N{LEFT BLACK LENTICULAR BRACKET}", "["),
+        ("\N{RIGHT BLACK LENTICULAR BRACKET}", "]"),
+        ("5\N{NARROW NO-BREAK SPACE}days", "5 days"),
+        ("days \N{LEFT BLACK LENTICULAR BRACKET}1\N{RIGHT BLACK LENTICULAR BRACKET}.", "days [1]."),
+        ("plain text [1].", "plain text [1]."),
+    ],
+)
+def test_normalize_delta_maps_characters_one_by_one(delta: str, expected: str):
+    assert normalize_delta(delta) == expected
+
+
+def test_clean_citation_markers_drops_the_dagger_part():
+    answer = "Five days [1\N{DAGGER}faq.txt L1-L2]. Free shipping [2\N{DAGGER}]. Also [3]."
+    assert clean_citation_markers(answer) == "Five days [1]. Free shipping [2]. Also [3]."
+    assert clean_citation_markers("A dagger \N{DAGGER} outside [brackets].") == (
+        "A dagger \N{DAGGER} outside [brackets]."
+    )
+
+
+async def test_lenticular_brackets_split_across_deltas_still_count_as_citations(
+    store: ChromaVectorStore,
+):
+    chat = ScriptedChat(
+        [
+            "Refunds are processed within 5",
+            "\N{NARROW NO-BREAK SPACE}business days ",
+            "\N{LEFT BLACK LENTICULAR BRACKET}",
+            "1",
+            "\N{RIGHT BLACK LENTICULAR BRACKET}",
+            ".",
+        ]
+    )
+
+    events = await collect(make_service(store, chat).answer(WS, QUESTION))
+
+    expected = "Refunds are processed within 5 business days [1]."
+    assert answer_text(events) == expected  # what the user sees while it streams
+    done = done_of(events)
+    assert done.answer == expected
+    assert [citation.number for citation in done.citations] == [1]
+    assert (done.refused, done.uncited) == (False, False)
+
+
+async def test_the_dagger_part_is_streamed_but_dropped_from_the_final_answer(
+    store: ChromaVectorStore,
+):
+    chat = ScriptedChat(
+        [
+            "Five business days ",
+            "\N{LEFT BLACK LENTICULAR BRACKET}",
+            "1\N{DAGGER}faq.txt",
+            "\N{RIGHT BLACK LENTICULAR BRACKET}",
+            ".",
+        ]
+    )
+
+    events = await collect(make_service(store, chat).answer(WS, QUESTION))
+
+    assert answer_text(events) == "Five business days [1\N{DAGGER}faq.txt]."
+    done = done_of(events)
+    assert done.answer == "Five business days [1]."
+    assert [citation.number for citation in done.citations] == [1]
+    assert done.uncited is False

@@ -27,7 +27,7 @@ Key design points:
 - **The collection name includes the embedding model slug** (`ws_{id}__{model-slug}`, for example `ws_3__bge-small-en-v1-5`). Switching providers then can't mix vector dimensions, and a re-index endpoint rebuilds the collection.
 - **Grounding:** retrieved chunks are numbered `[1]..[n]` in the prompt, and the model must cite with `[n]` or reply with a fixed "not found in the documents" answer. A similarity threshold skips the LLM entirely when nothing relevant comes back. Only sources the answer actually cites are returned as citations.
 - **Follow-ups:** the last few turns are condensed into a standalone question for retrieval. The full answer is then generated with that history.
-- **Streaming:** `POST /chat` returns SSE events (`token`, then `done` with citations and the message id, or `error`). The frontend reads it with `fetch` + `ReadableStream`, since EventSource can't POST.
+- **Streaming:** `POST /workspaces/{id}/conversations/{id}/messages` returns SSE events (`sources`, then `delta`s, then `done` with the cited sources and both message ids, or `error` with a safe message). The frontend reads it with `fetch` + `ReadableStream`, since EventSource can't POST.
 - **Ingestion runs in a background task.** Each document's status moves pending → processing → ready/failed. SHA-256 dedup stops the same file being indexed twice in a workspace. Deleting a document also removes its vectors and its file.
 
 ## Working agreement
@@ -52,7 +52,7 @@ Key design points:
 ### Answering
 - [x] **9. LLM providers:** `OpenAIChat`, `AnthropicChat` and `FakeChat`, all with a streaming interface, and env-configurable models. Tests use mocked SDK streams. Closing a stream early closes the provider stream; per-call token usage goes to an `on_usage` callback (for step 18's spend cap); SDK errors map to our `LLM*Error` types; API keys are `SecretStr`.
 - [x] **10. RAG service:** question condensing, retrieval + threshold, prompt build, `[n]` citation parsing and mapping. Tests: grounded answer with citations; off-topic question → refusal without an LLM call; citations that don't exist are dropped. Output is an event stream (sources → answer deltas → done with only the cited sources, `refused`, `uncited`). The whole answer call (system, history, sources, question, reserved output) fits `RAG_TOKEN_BUDGET`, trimming history before sources, so a follow-up stays under Groq's free 8K tokens/min. `[n]` markers are stripped from old answers in history, and document text is fenced as data against prompt injection.
-- [ ] **11. Chat API:** conversation CRUD, SSE `POST /conversations/{id}/messages`, and saving the user and assistant messages with their citations. Tests: SSE event sequence and persisted history.
+- [x] **11. Chat API:** conversation CRUD, SSE `POST /workspaces/{id}/conversations/{id}/messages` (FastAPI's built-in SSE, with keep-alive pings), and saving the user and assistant messages with their citations and `refused`/`uncited`/`incomplete` flags. A client that leaves mid-answer (Stop) gets its partial answer saved as `incomplete`; errors become an `error` event and save nothing; one reply streams per conversation at a time (409, in-process guard: single worker). Token usage is logged per message. Tests: SSE event sequence, persisted history, errors, the 409 guard, and disconnects (service-level and a raw-ASGI hang-up).
 
 ### Frontend
 - [ ] **12. Scaffold:** Vite + TS + Tailwind + shadcn/ui, routing, a typed API client, TanStack Query, and the app shell/layout.

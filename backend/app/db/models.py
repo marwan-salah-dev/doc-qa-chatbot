@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
     Dialect,
     Enum,
@@ -123,8 +124,14 @@ class Message(Base):
         Enum(MessageRole, native_enum=False, values_callable=lambda e: [m.value for m in e])
     )
     content: Mapped[str] = mapped_column(Text)
-    # List of citation dicts (document id, filename, location, quote); shaped in step 10
+    # The sources an assistant answer cites, as `services.chat.citation_dict` shapes them
     citations: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    # The "not found in your documents" reply
+    refused: Mapped[bool] = mapped_column(Boolean, default=False)
+    # A finished answer that cites no source, so it may not be grounded
+    uncited: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The client left mid-answer (usually the Stop button); this is what had streamed
+    incomplete: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")

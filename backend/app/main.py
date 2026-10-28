@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import documents, health, workspaces
+from app.api.routes import conversations, documents, health, workspaces
 from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
 from app.logging_config import configure_logging
+from app.services.chat import ReplyGuard
 from app.services.embeddings import create_embedder, ensure_chunk_fits
 from app.services.ingestion import fail_interrupted_documents
 from app.services.llm import create_chat_model
@@ -40,6 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = create_db_engine(settings.data_dir)
     app.state.session_factory = create_session_factory(app.state.engine)
+    app.state.reply_guard = ReplyGuard()
 
     app.add_middleware(
         CORSMiddleware,
@@ -68,4 +70,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(workspaces.router)
     app.include_router(documents.router)
+    app.include_router(conversations.router)
     return app
