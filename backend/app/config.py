@@ -36,7 +36,8 @@ class Settings(BaseSettings):
 
     # Answering (RAG)
     rag_top_k: int = Field(default=6, gt=0)
-    rag_min_score: float = Field(default=0.5, ge=0, le=1)
+    # Errs low: the LLM's NOT_FOUND instruction is the backstop for anything that slips through
+    rag_min_score: float = Field(default=0.45, ge=0, le=1)
     rag_token_budget: int = Field(default=5500, gt=0)
     rag_history_tokens: int = Field(default=1000, ge=0)
 
