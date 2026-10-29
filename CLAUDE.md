@@ -67,6 +67,17 @@ On this Windows machine uv was installed through winget. A shell opened before t
 - **Package installs need approval.** `.claude/settings.json` asks before installs. Never try to get around that.
 - **Never read or print `.env` files.** Use `backend/.env.example` to learn the configuration.
 
+## Plan self-review
+
+Before presenting any plan, check it against this list. Under the plan, add a short "Self-review" list of each concern found and the fix already applied to the plan (or "No concerns" for a section that has none).
+
+- **New dependencies:** licence (no GPL/AGPL), install and bundle size, dev or runtime dependency, and whether it ships in the production Docker image. Prefer the standard library or an existing dependency.
+- **Groq free tier:** about 8K tokens per minute. Keep prompts and retrieved context small, and wait about 60 s between live questions when testing against the real API.
+- **Windows / PowerShell:** use `curl.exe` (plain `curl` is an alias for `Invoke-WebRequest`), `127.0.0.1` instead of `localhost` (avoids IPv6 resolution delays and misses), PowerShell syntax (no `&&` in 5.1), and backslash paths in scripts.
+- **Security:** every query, upload and delete is scoped to its workspace; no secrets, keys or customer data in code, logs or commits; `.env` is never read.
+- **Frontend bundle size:** lazy-load heavy libraries (`React.lazy` / dynamic `import()`) and check the `npm run build` output for size changes.
+- **Live verification:** say how the change will be checked in the browser against the running app, not only by tests.
+
 ## Conventions
 
 - **Frontend:** the browser calls `/api/...`; Vite (dev) strips the prefix and proxies to the backend, so there is no CORS in development. Hand-written API types in `frontend/src/api/types.ts` mirror `backend/app/api/schemas.py`; update both together. Server settings the UI must match (today `max_upload_mb`) come from `GET /config` (`useConfig`), never a copied constant. Component tests use jsdom + Testing Library: put `// @vitest-environment jsdom` at the top of the file and mock `api` from `@/api/client`. TypeScript is pinned to 6.0 until typescript-eslint supports 7. Colours come from the tokens in `index.css` (`primary`, `primary-soft`, `surface`, `highlight`, `success`, `warning`); don't hard-code Tailwind palette colours. Below `lg` (`useMediaQuery(WIDE_LAYOUT)`) side lists render in a `Sheet` instead of beside the chat; component tests get the desktop layout unless they call `setMatchMedia(false)`. Confirm user actions with `toast` from `sonner`, alongside any inline error.

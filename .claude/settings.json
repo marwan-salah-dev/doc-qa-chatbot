@@ -1,5 +1,51 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(uv run pytest)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format --check *)",
+      "Bash(uv run pyright)",
+      "Bash(uv run pyright *)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint *)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm run format:check)",
+      "Bash(npm run format:check *)",
+      "Bash(npm run build)",
+      "Bash(npm run build *)",
+      "Bash(npx vitest run)",
+      "Bash(npx vitest run *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "PowerShell(uv run pytest)",
+      "PowerShell(uv run pytest *)",
+      "PowerShell(uv run ruff check *)",
+      "PowerShell(uv run ruff format --check *)",
+      "PowerShell(uv run pyright)",
+      "PowerShell(uv run pyright *)",
+      "PowerShell(npm run lint)",
+      "PowerShell(npm run lint *)",
+      "PowerShell(npm run typecheck)",
+      "PowerShell(npm run typecheck *)",
+      "PowerShell(npm run format:check)",
+      "PowerShell(npm run format:check *)",
+      "PowerShell(npm run build)",
+      "PowerShell(npm run build *)",
+      "PowerShell(npx vitest run)",
+      "PowerShell(npx vitest run *)",
+      "PowerShell(git status)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log)",
+      "PowerShell(git log *)"
+    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.local)",
@@ -36,7 +82,18 @@
       "Bash(npm add *)",
       "Bash(npm ci *)",
       "Bash(npm ci)",
-      "Bash(npx *)",
+      "Bash(npx -y *)",
+      "Bash(npx --yes *)",
+      "Bash(npx -p *)",
+      "Bash(npx --package *)",
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(git rm *)",
+      "Bash(git clean *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git push)",
       "PowerShell(uv add *)",
       "PowerShell(uv pip *)",
       "PowerShell(uv sync *)",
@@ -52,8 +109,34 @@
       "PowerShell(npm add *)",
       "PowerShell(npm ci *)",
       "PowerShell(npm ci)",
-      "PowerShell(npx *)",
-      "PowerShell(winget install *)"
+      "PowerShell(npx -y *)",
+      "PowerShell(npx --yes *)",
+      "PowerShell(npx -p *)",
+      "PowerShell(npx --package *)",
+      "PowerShell(winget install *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(rm *)",
+      "PowerShell(del *)",
+      "PowerShell(rmdir *)",
+      "PowerShell(git rm *)",
+      "PowerShell(git clean *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git push *)",
+      "PowerShell(git push)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify-done.ps1\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }
