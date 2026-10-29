@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
-import type { DocumentItem, Workspace } from './types'
+import type { Conversation, DocumentItem, Workspace } from './types'
 
-/** Every query key in one place, so invalidation can't drift from the queries. Conversations
- * are added with their UI in step 14. */
+/** Every query key in one place, so invalidation can't drift from the queries. */
 export const queryKeys = {
   config: () => ['config'] as const,
   workspaces: () => ['workspaces'] as const,
   // Not nested under 'workspaces': invalidating the workspace list must not refetch documents
   documents: (workspaceId: string) => ['documents', workspaceId] as const,
+  conversations: (workspaceId: string) => ['conversations', workspaceId] as const,
+  messages: (workspaceId: string, conversationId: string) =>
+    ['messages', workspaceId, conversationId] as const,
 }
 
 const DOCUMENT_POLL_MS = 2000
@@ -69,6 +71,8 @@ export function useDeleteWorkspace(workspaceId: string) {
         old?.filter((w) => w.id !== workspaceId),
       )
       queryClient.removeQueries({ queryKey: queryKeys.documents(workspaceId) })
+      queryClient.removeQueries({ queryKey: queryKeys.conversations(workspaceId) })
+      queryClient.removeQueries({ queryKey: ['messages', workspaceId] })
     },
   })
 }
@@ -103,5 +107,53 @@ export function useDeleteDocument(workspaceId: string) {
   return useMutation({
     mutationFn: (documentId: string) => api.documents.remove(workspaceId, documentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.documents(workspaceId) }),
+  })
+}
+
+/** Newest first. A conversation's title is its first question, empty until one is asked. */
+export function useConversations(workspaceId: string) {
+  return useQuery({
+    queryKey: queryKeys.conversations(workspaceId),
+    queryFn: () => api.conversations.list(workspaceId),
+  })
+}
+
+export function useCreateConversation(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.conversations.create(workspaceId),
+    onSuccess: async (conversation) => {
+      // Listed straight away; the refetch after its first reply brings its title
+      queryClient.setQueryData<Conversation[]>(queryKeys.conversations(workspaceId), (old) => [
+        conversation,
+        ...(old ?? []),
+      ])
+      // The new conversation has no messages yet, so its thread needn't wait for a fetch
+      queryClient.setQueryData(queryKeys.messages(workspaceId, conversation.id), [])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversations(workspaceId) })
+    },
+  })
+}
+
+export function useDeleteConversation(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) => api.conversations.remove(workspaceId, conversationId),
+    onSuccess: async (_result, conversationId) => {
+      queryClient.setQueryData<Conversation[]>(queryKeys.conversations(workspaceId), (old) =>
+        old?.filter((c) => c.id !== conversationId),
+      )
+      queryClient.removeQueries({ queryKey: queryKeys.messages(workspaceId, conversationId) })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversations(workspaceId) })
+    },
+  })
+}
+
+/** A conversation's saved messages, oldest first. Idle until a conversation is open. */
+export function useMessages(workspaceId: string, conversationId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.messages(workspaceId, conversationId ?? ''),
+    queryFn: () => api.conversations.messages(workspaceId, conversationId ?? ''),
+    enabled: conversationId !== undefined,
   })
 }

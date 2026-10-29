@@ -4,6 +4,8 @@
 /** Server settings the UI needs to match (GET /config). */
 export interface AppConfig {
   max_upload_mb: number
+  /** The longest question the chat endpoint accepts. */
+  max_question_chars: number
 }
 
 export interface Workspace {

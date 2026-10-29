@@ -128,3 +128,53 @@
     @apply font-sans;
   }
 }
+
+/* Answers rendered from markdown (see Markdown.tsx). Tailwind's reset removes list bullets,
+   heading sizes and table borders, so the few elements answers use get them back here. */
+@layer components {
+  .markdown {
+    @apply text-sm leading-relaxed break-words;
+  }
+  .markdown > * + * {
+    @apply mt-3;
+  }
+  .markdown :is(h1, h2, h3, h4) {
+    @apply mt-4 font-semibold;
+  }
+  .markdown h1 {
+    @apply text-lg;
+  }
+  .markdown h2 {
+    @apply text-base;
+  }
+  .markdown :is(ul, ol) {
+    @apply space-y-1 pl-5;
+  }
+  .markdown ul {
+    @apply list-disc;
+  }
+  .markdown ol {
+    @apply list-decimal;
+  }
+  .markdown a {
+    @apply underline underline-offset-2;
+  }
+  .markdown :not(pre) > code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
+  }
+  .markdown pre {
+    @apply overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs;
+  }
+  .markdown blockquote {
+    @apply border-l-2 pl-3 text-muted-foreground;
+  }
+  .markdown table {
+    @apply block w-full overflow-x-auto text-left;
+  }
+  .markdown :is(th, td) {
+    @apply border px-2 py-1;
+  }
+  .markdown th {
+    @apply bg-muted font-medium;
+  }
+}

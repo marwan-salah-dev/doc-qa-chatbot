@@ -2,12 +2,13 @@ import { Link, useParams } from 'react-router'
 
 import { useWorkspaces } from '@/api/queries'
 import { CenteredMessage } from '@/components/CenteredMessage'
+import { ChatPanel } from '@/components/ChatPanel'
 import { DocumentList } from '@/components/DocumentList'
 import { DocumentUploader } from '@/components/DocumentUploader'
 import { Button } from '@/components/ui/button'
 import { WorkspaceHeader } from '@/components/WorkspaceHeader'
 
-/** The selected workspace: its documents on the left, and the chat (step 14) beside them. */
+/** The selected workspace: its documents on the left, and the chat beside them. */
 export function WorkspacePage() {
   const { workspaceId } = useParams()
   const workspaces = useWorkspaces()
@@ -43,11 +44,8 @@ export function WorkspacePage() {
         <DocumentUploader workspaceId={workspace.id} />
         <DocumentList workspaceId={workspace.id} />
       </aside>
-      <section
-        aria-label="Chat"
-        className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground"
-      >
-        Conversations will appear here.
+      <section aria-label="Chat" className="flex h-[calc(100svh-3.5rem-1px)] min-w-0 flex-1">
+        <ChatPanel workspaceId={workspace.id} />
       </section>
     </div>
   )

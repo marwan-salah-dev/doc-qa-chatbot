@@ -11,8 +11,13 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
-      // Steps 13-14 add the conversation route under the workspace
-      { path: 'w/:workspaceId', element: <WorkspacePage /> },
+      {
+        path: 'w/:workspaceId',
+        element: <WorkspacePage />,
+        // Nested, so opening a conversation keeps the page (and a streaming reply) mounted;
+        // WorkspacePage reads the id itself rather than rendering an outlet
+        children: [{ path: 'c/:conversationId', element: null }],
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
