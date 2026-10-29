@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import conversations, documents, health, workspaces
+from app.api.routes import config, conversations, documents, health, workspaces
 from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
 from app.logging_config import configure_logging
@@ -68,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     app.include_router(health.router)
+    app.include_router(config.router)
     app.include_router(workspaces.router)
     app.include_router(documents.router)
     app.include_router(conversations.router)

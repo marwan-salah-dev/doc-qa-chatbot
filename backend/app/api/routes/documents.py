@@ -76,8 +76,7 @@ def upload_document(
     if existing is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f'This file is already in the workspace as "{existing.filename}" '
-            f"(document {existing.id}).",
+            f'This file is already in the workspace as "{existing.filename}".',
         )
 
     document = Document(

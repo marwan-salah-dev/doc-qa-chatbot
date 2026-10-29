@@ -37,7 +37,7 @@ uv run pytest             # run the test suite
 uv run ruff check .       # lint
 uv run ruff format .      # format (use --check to verify only)
 uv run pyright            # type check (basic mode, configured in pyproject.toml)
-uv run uvicorn app.main:create_app --factory --port 8000   # start the API (there is no app.main:app)
+uv run uvicorn app.main:create_app --factory --port 8000 --reload   # start the API in development; --reload picks up backend changes (there is no app.main:app)
 ```
 
 Run these from `frontend/`:
@@ -66,7 +66,7 @@ On this Windows machine uv was installed through winget. A shell opened before t
 
 ## Conventions
 
-- **Frontend:** the browser calls `/api/...`; Vite (dev) strips the prefix and proxies to the backend, so there is no CORS in development. Hand-written API types in `frontend/src/api/types.ts` mirror `backend/app/api/schemas.py`; update both together. TypeScript is pinned to 6.0 until typescript-eslint supports 7.
+- **Frontend:** the browser calls `/api/...`; Vite (dev) strips the prefix and proxies to the backend, so there is no CORS in development. Hand-written API types in `frontend/src/api/types.ts` mirror `backend/app/api/schemas.py`; update both together. Server settings the UI must match (today `max_upload_mb`) come from `GET /config` (`useConfig`), never a copied constant. Component tests use jsdom + Testing Library: put `// @vitest-environment jsdom` at the top of the file and mock `api` from `@/api/client`. TypeScript is pinned to 6.0 until typescript-eslint supports 7.
 - **Tests:** they never call paid APIs. Use the `Fake*` providers (fake embedder and fake chat model) and mocked SDKs.
 - **Configuration:** comes from environment variables through `pydantic-settings`. Every new setting must also be added to `backend/.env.example` with a comment (a test checks this). The app loads `backend/.env` wherever commands are run from.
 - **Ruff rules:** E, W, F, I, B, UP, SIM, RUF, with line length 100. Keep `ruff check` and `ruff format --check` clean.

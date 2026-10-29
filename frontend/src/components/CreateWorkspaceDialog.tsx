@@ -13,9 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-// Same limit as the backend's WorkspaceCreate
-const MAX_NAME_LENGTH = 100
+import { MAX_WORKSPACE_NAME_LENGTH } from '@/lib/workspace'
 
 interface CreateWorkspaceDialogProps {
   open: boolean
@@ -71,7 +69,7 @@ function CreateWorkspaceForm({ onCreated }: { onCreated: () => void }) {
             setName(event.target.value)
           }}
           placeholder="Acme Dental"
-          maxLength={MAX_NAME_LENGTH}
+          maxLength={MAX_WORKSPACE_NAME_LENGTH}
           autoFocus
           aria-invalid={createWorkspace.isError}
           aria-describedby={createWorkspace.isError ? 'workspace-name-error' : undefined}

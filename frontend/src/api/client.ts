@@ -1,4 +1,4 @@
-import type { Conversation, DocumentItem, Message, Workspace } from './types'
+import type { AppConfig, Conversation, DocumentItem, Message, Workspace } from './types'
 
 const configuredBase = import.meta.env.VITE_API_BASE_URL
 
@@ -67,6 +67,10 @@ function withJson(method: string, body: unknown): RequestInit {
 }
 
 export const api = {
+  config: {
+    get: () => request<AppConfig>(apiPath`/config`),
+  },
+
   workspaces: {
     list: () => request<Workspace[]>(apiPath`/workspaces`),
     get: (id: string) => request<Workspace>(apiPath`/workspaces/${id}`),

@@ -201,7 +201,9 @@ def test_duplicate_file_in_a_workspace_conflicts(client):
     response = upload(client, ws, filename="renamed-copy.txt")
 
     assert response.status_code == 409
-    assert first["id"] in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert first["filename"] in detail
+    assert first["id"] not in detail  # an internal id means nothing to the person uploading
     assert len(client.get(f"/workspaces/{ws}/documents").json()) == 1
 
 

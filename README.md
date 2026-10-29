@@ -43,7 +43,7 @@ cd backend
 cp .env.example .env   # then fill in your API key
 uv sync
 uv run pytest
-uv run uvicorn app.main:create_app --factory --port 8000
+uv run uvicorn app.main:create_app --factory --port 8000 --reload   # --reload restarts on code changes (development only)
 ```
 
 Frontend (second terminal):

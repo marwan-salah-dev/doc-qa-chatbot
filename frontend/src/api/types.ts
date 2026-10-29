@@ -1,6 +1,11 @@
 // Mirrors the backend's response models. Source of truth: backend/app/api/schemas.py
 // (and `citation_dict` / `_to_sse` for the streamed events). Datetimes are ISO strings.
 
+/** Server settings the UI needs to match (GET /config). */
+export interface AppConfig {
+  max_upload_mb: number
+}
+
 export interface Workspace {
   id: string
   name: string
