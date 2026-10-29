@@ -1,11 +1,13 @@
-import { MessageSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { MessageSquareIcon, MessagesSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { toast } from 'sonner'
 
 import { useConversations, useDeleteConversation } from '@/api/queries'
 import type { Conversation } from '@/api/types'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 /** A conversation's title is its first question, empty until one is asked. */
@@ -17,10 +19,12 @@ interface ConversationListProps {
   workspaceId: string
   /** The conversation streaming a reply, which can't be deleted until it finishes. */
   busyId?: string
+  /** Called when a conversation or New chat is picked, so a sheet holding the list can close. */
+  onNavigate?: () => void
 }
 
 /** The workspace's conversations, newest first. The open one comes from the URL. */
-export function ConversationList({ workspaceId, busyId }: ConversationListProps) {
+export function ConversationList({ workspaceId, busyId, onNavigate }: ConversationListProps) {
   const { conversationId } = useParams()
   const navigate = useNavigate()
   const conversations = useConversations(workspaceId)
@@ -31,7 +35,13 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
 
   let list
   if (conversations.isPending) {
-    list = <p className="px-2 text-sm text-muted-foreground">Loading conversations…</p>
+    list = (
+      <div className="grid gap-2 px-2 pt-1" aria-busy="true" aria-label="Loading conversations">
+        <Skeleton className="h-4 w-4/5" />
+        <Skeleton className="h-4 w-3/5" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    )
   } else if (conversations.isError) {
     list = (
       <div className="grid gap-2 px-2 text-sm">
@@ -50,9 +60,12 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
     )
   } else if (conversations.data.length === 0) {
     list = (
-      <p className="px-2 text-sm text-muted-foreground">
-        No conversations yet. Ask a question to start one.
-      </p>
+      <div className="grid justify-items-center gap-1.5 px-2 py-6 text-center">
+        <MessagesSquareIcon className="size-5 text-muted-foreground" aria-hidden />
+        <p className="text-sm text-muted-foreground">
+          No conversations yet. Ask a question to start one.
+        </p>
+      </div>
     )
   } else {
     list = (
@@ -65,17 +78,24 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
             <li
               key={conversation.id}
               className={cn(
-                'group flex items-center gap-1 rounded-md pr-1 hover:bg-accent',
-                active && 'bg-accent',
+                'group flex items-center gap-1 rounded-md pr-1 transition-colors hover:bg-muted',
+                active && 'bg-primary-soft text-primary-soft-foreground hover:bg-primary-soft',
               )}
             >
               <Link
                 to={`/w/${workspaceId}/c/${conversation.id}`}
                 aria-current={active ? 'page' : undefined}
+                onClick={onNavigate}
                 className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 title={title}
               >
-                <MessageSquareIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <MessageSquareIcon
+                  className={cn(
+                    'size-4 shrink-0',
+                    active ? 'text-primary-soft-foreground' : 'text-muted-foreground',
+                  )}
+                  aria-hidden
+                />
                 <span className={cn('truncate', active && 'font-medium')}>{title}</span>
               </Link>
               <Button
@@ -85,7 +105,7 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
                 // The backend is still writing its answer; deleting now would race with that save
                 disabled={busy}
                 title={busy ? 'Wait until the answer finishes' : 'Delete'}
-                className="shrink-0 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 disabled:opacity-0 pointer-coarse:opacity-70"
                 onClick={() => {
                   remove.reset()
                   setTarget(conversation)
@@ -103,8 +123,8 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
 
   return (
     <nav aria-label="Conversations" className="grid grid-cols-1 content-start gap-2">
-      <Button variant="outline" size="sm" className="justify-start" asChild>
-        <Link to={`/w/${workspaceId}`}>
+      <Button variant="outline" className="justify-start" asChild>
+        <Link to={`/w/${workspaceId}`} onClick={onNavigate}>
           <PlusIcon />
           New chat
         </Link>
@@ -123,6 +143,7 @@ export function ConversationList({ workspaceId, busyId }: ConversationListProps)
           remove.mutate(target.id, {
             onSuccess: () => {
               setConfirmOpen(false)
+              toast.success('Conversation deleted')
               if (target.id === conversationId) void navigate(`/w/${workspaceId}`)
             },
           })

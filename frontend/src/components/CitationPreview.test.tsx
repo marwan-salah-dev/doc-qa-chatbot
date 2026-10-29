@@ -8,13 +8,20 @@ import { CitationChip } from '@/components/CitationChip'
 import { CitationPreviewProvider } from '@/components/CitationPreview'
 import { makeCitation, renderWithProviders } from '@/test/render'
 
-const mocks = vi.hoisted(() => ({ fileText: vi.fn(), pdfFails: false }))
+const mocks = vi.hoisted(() => ({ fileText: vi.fn(), fileExists: vi.fn(), pdfFails: false }))
 
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>()
   return {
     ...actual,
-    api: { ...actual.api, documents: { ...actual.api.documents, fileText: mocks.fileText } },
+    api: {
+      ...actual.api,
+      documents: {
+        ...actual.api.documents,
+        fileText: mocks.fileText,
+        fileExists: mocks.fileExists,
+      },
+    },
   }
 })
 
@@ -46,6 +53,7 @@ async function openPreview(name = /faq\.txt/) {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  mocks.fileExists.mockResolvedValue(true)
   mocks.pdfFails = false
 })
 
@@ -59,10 +67,32 @@ describe('citation preview', () => {
     expect(within(dialog).getByText('lines 3–8')).toBeTruthy()
     expect(within(dialog).getByText('We are open Monday to Friday, 9am to 5pm.')).toBeTruthy()
     expect(
-      within(dialog)
-        .getByRole('link', { name: /open original/i })
-        .getAttribute('href'),
+      (await within(dialog).findByRole('link', { name: /open original/i })).getAttribute('href'),
     ).toBe('/api/workspaces/ws1/documents/d1/file')
+    expect(mocks.fileExists).toHaveBeenCalledWith('ws1', 'd1')
+  })
+
+  it('hides "Open original" when the file is gone', async () => {
+    mocks.fileText.mockResolvedValue('')
+    mocks.fileExists.mockResolvedValue(false)
+    renderChip()
+    const { dialog } = await openPreview()
+
+    await vi.waitFor(() => {
+      expect(mocks.fileExists).toHaveBeenCalled()
+    })
+    // Let the answer reach the component before checking that nothing appeared
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(within(dialog).queryByRole('link', { name: /open original/i })).toBeNull()
+  })
+
+  it('hides "Open original" until the file is known to exist', async () => {
+    mocks.fileText.mockResolvedValue('')
+    mocks.fileExists.mockReturnValue(new Promise(() => undefined))
+    renderChip()
+    const { dialog } = await openPreview()
+
+    expect(within(dialog).queryByRole('link', { name: /open original/i })).toBeNull()
   })
 
   it('opens a PDF at the cited pages', async () => {

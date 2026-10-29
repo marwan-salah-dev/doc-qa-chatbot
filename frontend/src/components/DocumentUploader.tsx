@@ -1,5 +1,6 @@
 import { LoaderCircleIcon, UploadIcon, XIcon } from 'lucide-react'
 import { type DragEvent, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 import { useConfig, useUploadDocument } from '@/api/queries'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,14 @@ interface UploadItem {
 
 /** Drag-and-drop zone and file picker. Files are checked in the browser first, then uploaded one
  * at a time in the order given (a later drop queues behind an earlier one). */
-export function DocumentUploader({ workspaceId }: { workspaceId: string }) {
+export function DocumentUploader({
+  workspaceId,
+  size = 'compact',
+}: {
+  workspaceId: string
+  /** `large` is the drop zone filling the empty chat area of a workspace with no documents. */
+  size?: 'compact' | 'large'
+}) {
   const config = useConfig()
   const upload = useUploadDocument(workspaceId)
   const maxUploadMb = config.data?.max_upload_mb
@@ -42,8 +50,11 @@ export function DocumentUploader({ workspaceId }: { workspaceId: string }) {
     try {
       await upload.mutateAsync(file)
       dropItem(id)
+      toast.success(`Uploaded ${file.name}`, { description: 'Indexing it now.' })
     } catch (error) {
-      patchItem(id, { state: 'error', ...describeUploadError(error, maxUploadMb) })
+      const problem = describeUploadError(error, maxUploadMb)
+      patchItem(id, { state: 'error', ...problem })
+      toast.error(`${file.name}: ${problem.title}`, { description: problem.message })
     }
   }
 
@@ -104,13 +115,21 @@ export function DocumentUploader({ workspaceId }: { workspaceId: string }) {
         }}
         onDrop={handleDrop}
         className={cn(
-          'flex flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-          'data-[dragging=true]:border-primary data-[dragging=true]:bg-primary/5',
+          'flex flex-col items-center gap-1 rounded-xl border border-dashed bg-background text-center transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+          'data-[dragging=true]:border-primary data-[dragging=true]:bg-primary-soft',
+          size === 'large' ? 'gap-2 px-6 py-10' : 'px-4 py-5',
         )}
       >
-        <UploadIcon className="pointer-events-none size-5 text-muted-foreground" aria-hidden />
+        <span
+          className={cn(
+            'pointer-events-none grid place-items-center rounded-full bg-primary-soft text-primary-soft-foreground',
+            size === 'large' ? 'mb-1 size-11' : 'size-8',
+          )}
+        >
+          <UploadIcon className={size === 'large' ? 'size-5' : 'size-4'} aria-hidden />
+        </span>
         <span className="pointer-events-none text-sm font-medium">
-          Drop files here or click to choose
+          Drop files here or <span className="text-primary">browse</span>
         </span>
         <span className="pointer-events-none text-xs text-muted-foreground">
           {maxUploadMb === undefined
@@ -122,7 +141,10 @@ export function DocumentUploader({ workspaceId }: { workspaceId: string }) {
       {items.length > 0 && (
         <ul aria-label="Uploads" aria-live="polite" className="grid gap-2">
           {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-2 rounded-md border p-2 text-sm">
+            <li
+              key={item.id}
+              className="flex items-start gap-2 rounded-lg border bg-background p-2 text-sm"
+            >
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium" title={item.name}>
                   {item.name}

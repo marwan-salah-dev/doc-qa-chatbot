@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
 
 import { useCreateWorkspace } from '@/api/queries'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ function CreateWorkspaceForm({ onCreated }: { onCreated: () => void }) {
     createWorkspace.mutate(trimmed, {
       onSuccess: (workspace) => {
         onCreated()
+        toast.success(`Created ${workspace.name}`)
         void navigate(`/w/${workspace.id}`)
       },
     })

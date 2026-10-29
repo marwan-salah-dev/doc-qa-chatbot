@@ -1,4 +1,5 @@
 import { type SubmitEvent, useState } from 'react'
+import { toast } from 'sonner'
 
 import { useRenameWorkspace } from '@/api/queries'
 import type { Workspace } from '@/api/types'
@@ -52,7 +53,12 @@ function RenameForm({ workspace, onDone }: { workspace: Workspace; onDone: () =>
       onDone()
       return
     }
-    rename.mutate(trimmed, { onSuccess: onDone })
+    rename.mutate(trimmed, {
+      onSuccess: () => {
+        toast.success(`Renamed to ${trimmed}`)
+        onDone()
+      },
+    })
   }
 
   return (

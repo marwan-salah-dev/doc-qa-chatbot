@@ -122,7 +122,8 @@ def get_document(workspace_id: str, document_id: str, db: DbSession) -> Document
     return get_document_or_404(db, workspace_id, document_id)
 
 
-@router.get("/{document_id}/file")
+# HEAD lets the preview check the file still exists before offering "Open original"
+@router.api_route("/{document_id}/file", methods=["GET", "HEAD"])
 def download_document_file(
     workspace_id: str, document_id: str, db: DbSession, settings: AppSettings
 ) -> FileResponse:

@@ -2,12 +2,20 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-highlight: var(--highlight);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +56,87 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* DocQA palette: cool neutrals with one iris accent. Every shadcn component reads these, so the
+   whole app changes colour here. Values are listed in docs/PLAN.md step 16. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: #ffffff;
+  --foreground: #0b0b0f;
+  --surface: #fafafb;
+  --card: #ffffff;
+  --card-foreground: #0b0b0f;
+  --popover: #ffffff;
+  --popover-foreground: #0b0b0f;
+  --primary: #5b5bd6;
+  --primary-foreground: #ffffff;
+  --primary-soft: #efeffd;
+  --primary-soft-foreground: #4746b8;
+  --secondary: #f4f4f6;
+  --secondary-foreground: #1c1c22;
+  --muted: #f4f4f6;
+  --muted-foreground: #6b6b76;
+  --accent: #f1f1f4;
+  --accent-foreground: #0b0b0f;
+  --destructive: #e5484d;
+  --success: #12a594;
+  --warning: #d98e04;
+  --highlight: rgb(255 224 120 / 0.55);
+  --border: #e8e8ec;
+  --input: #e2e2e7;
+  --ring: #5b5bd6;
+  --chart-1: #5b5bd6;
+  --chart-2: #12a594;
+  --chart-3: #d98e04;
+  --chart-4: #e5484d;
+  --chart-5: #6b6b76;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #fafafb;
+  --sidebar-foreground: #0b0b0f;
+  --sidebar-primary: #5b5bd6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #efeffd;
+  --sidebar-accent-foreground: #4746b8;
+  --sidebar-border: #e8e8ec;
+  --sidebar-ring: #5b5bd6;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0a0a0c;
+  --foreground: #ededf0;
+  --surface: #111114;
+  --card: #111114;
+  --card-foreground: #ededf0;
+  --popover: #141418;
+  --popover-foreground: #ededf0;
+  --primary: #6e6ade;
+  --primary-foreground: #ffffff;
+  --primary-soft: #1e1f44;
+  --primary-soft-foreground: #b1a9ff;
+  --secondary: #1a1a1f;
+  --secondary-foreground: #ededf0;
+  --muted: #1a1a1f;
+  --muted-foreground: #8c8c96;
+  --accent: #1f1f25;
+  --accent-foreground: #ededf0;
+  --destructive: #ec5d5e;
+  --success: #20b8a5;
+  --warning: #f1a10d;
+  --highlight: rgb(110 106 222 / 0.22);
+  --border: #26262c;
+  --input: #2e2e35;
+  --ring: #6e6ade;
+  --chart-1: #6e6ade;
+  --chart-2: #20b8a5;
+  --chart-3: #f1a10d;
+  --chart-4: #ec5d5e;
+  --chart-5: #8c8c96;
+  --sidebar: #111114;
+  --sidebar-foreground: #ededf0;
+  --sidebar-primary: #6e6ade;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e1f44;
+  --sidebar-accent-foreground: #b1a9ff;
+  --sidebar-border: #26262c;
+  --sidebar-ring: #6e6ade;
 }
 
 @layer base {
@@ -122,10 +144,14 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
   }
   html {
     @apply font-sans;
+  }
+  :is(h1, h2, h3) {
+    letter-spacing: -0.011em;
   }
 }
 
@@ -133,7 +159,7 @@
    heading sizes and table borders, so the few elements answers use get them back here. */
 @layer components {
   .markdown {
-    @apply text-sm leading-relaxed break-words;
+    @apply text-[0.9375rem] leading-[1.65] break-words;
   }
   .markdown > * + * {
     @apply mt-3;
@@ -157,7 +183,10 @@
     @apply list-decimal;
   }
   .markdown a {
-    @apply underline underline-offset-2;
+    @apply text-primary underline underline-offset-2;
+  }
+  .markdown strong {
+    @apply font-semibold;
   }
   .markdown :not(pre) > code {
     @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
@@ -183,6 +212,7 @@
    sits over the rendered page, so the mark only tints it: visible text here would double up. */
 @layer components {
   .pdf-pages mark {
-    @apply rounded-[1px] bg-yellow-300/40 text-transparent;
+    /* Always the yellow highlighter: the rendered page is white in both themes */
+    @apply rounded-[1px] bg-[rgb(255_224_120/0.55)] text-transparent;
   }
 }

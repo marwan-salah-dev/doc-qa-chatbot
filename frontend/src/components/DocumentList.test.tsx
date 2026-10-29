@@ -8,7 +8,14 @@ import { makeDocument, renderWithProviders } from '@/test/render'
 
 import { DocumentList } from './DocumentList'
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), remove: vi.fn(), reindex: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  remove: vi.fn(),
+  reindex: vi.fn(),
+  toastSuccess: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: mocks.toastSuccess } }))
 
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>()
@@ -124,6 +131,7 @@ describe('DocumentList', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull()
     })
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Deleted a.txt')
   })
 
   it('keeps the dialog open and shows the error when a delete fails', async () => {
@@ -138,6 +146,7 @@ describe('DocumentList', () => {
 
     expect(await within(dialog).findByText('The vector store is unavailable.')).toBeTruthy()
     expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 
   it('polls while a document is processing and stops once all have settled', async () => {

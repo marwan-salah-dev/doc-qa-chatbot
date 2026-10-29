@@ -1,5 +1,6 @@
 import type { Citation } from '@/api/types'
 import { CitationPreview } from '@/components/CitationPreview'
+import { FileTypeIcon } from '@/components/FileTypeIcon'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
@@ -24,19 +25,23 @@ export function CitationChip({ citation, variant = 'inline' }: CitationChipProps
           }
           title={inline ? `${citation.filename} · ${citation.label}` : undefined}
           className={cn(
-            'cursor-pointer border font-medium transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+            'cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
             inline
-              ? 'mx-0.5 inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-md bg-muted px-1 align-[0.15em] text-[0.7rem] leading-none'
-              : 'inline-flex max-w-full items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-xs',
+              ? 'mx-0.5 inline-flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-[0.3rem] bg-primary-soft px-1 align-[0.12em] font-mono text-[0.6875rem] leading-none font-medium text-primary-soft-foreground hover:bg-primary hover:text-primary-foreground'
+              : 'inline-flex max-w-full items-center gap-2 rounded-lg border bg-background py-1 pr-2.5 pl-1 text-xs shadow-xs hover:border-primary/40 hover:bg-primary-soft/40',
           )}
         >
           {inline ? (
             citation.number
           ) : (
             <>
-              <span className="rounded-full bg-muted px-1.5 text-[0.7rem]">{citation.number}</span>
-              <span className="truncate">
-                {citation.filename} · {citation.label}
+              <FileTypeIcon filename={citation.filename} className="size-6 rounded-[0.3rem]" />
+              <span className="min-w-0 truncate">
+                <span className="font-medium">{citation.filename}</span>
+                <span className="text-muted-foreground"> · {citation.label}</span>
+              </span>
+              <span className="font-mono text-[0.6875rem] text-primary-soft-foreground">
+                {citation.number}
               </span>
             </>
           )}

@@ -105,6 +105,13 @@ export const api = {
     /** The original file, for previews and downloads. */
     fileUrl: (workspaceId: string, id: string) =>
       apiPath`/workspaces/${workspaceId}/documents/${id}/file`,
+    /** Whether the original is still stored (a reseeded or deleted document's may be gone). */
+    fileExists: async (workspaceId: string, id: string) => {
+      const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`, {
+        method: 'HEAD',
+      })
+      return response.ok
+    },
     /** The original of a text file, for showing a passage among the lines around it. */
     fileText: async (workspaceId: string, id: string) => {
       const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`)

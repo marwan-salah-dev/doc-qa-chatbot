@@ -91,4 +91,19 @@ describe('api client', () => {
     expect((init.body as FormData).get('file')).toBeInstanceOf(File)
     expect(new Headers(init.headers).has('Content-Type')).toBe(false)
   })
+
+  it('checks the original file with HEAD', async () => {
+    const fetchMock = mockFetch(new Response(null, { status: 200 }))
+
+    expect(await api.documents.fileExists('ws1', 'd1')).toBe(true)
+    expect(fetchMock).toHaveBeenCalledWith('/api/workspaces/ws1/documents/d1/file', {
+      method: 'HEAD',
+    })
+  })
+
+  it('reports a missing original file as not existing', async () => {
+    mockFetch(new Response(null, { status: 404 }))
+
+    expect(await api.documents.fileExists('ws1', 'd1')).toBe(false)
+  })
 })

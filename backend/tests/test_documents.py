@@ -288,6 +288,19 @@ def test_original_file_can_be_downloaded(client):
     assert "policy.pdf" in response.headers["content-disposition"]
 
 
+def test_head_checks_the_original_file_without_downloading_it(client, tmp_path):
+    ws = make_workspace(client)
+    created = upload_ok(client, ws)
+    url = f"/workspaces/{ws}/documents/{created['id']}/file"
+
+    present = client.head(url)
+    assert present.status_code == 200
+    assert present.content == b""
+
+    stored_file(tmp_path, ws, created["id"], "txt").unlink()
+    assert client.head(url).status_code == 404
+
+
 def test_delete_removes_vectors_file_and_record(client, api_store, tmp_path):
     ws = make_workspace(client)
     keep = upload_ok(client, ws, "keep.txt", b"Parking is free for patients.")

@@ -1,6 +1,7 @@
 import { PencilIcon, Trash2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
 
 import { useDeleteWorkspace } from '@/api/queries'
 import type { Workspace } from '@/api/types'
@@ -20,6 +21,7 @@ export function WorkspaceHeader({ workspace }: { workspace: Workspace }) {
       // mutateAsync, not mutate's callbacks: removing the workspace from the cache unmounts this
       // component, and callbacks passed to mutate() don't run once it has unmounted.
       await deleteWorkspace.mutateAsync()
+      toast.success(`Deleted ${workspace.name}`)
       void navigate('/')
     } catch {
       // The error is shown in the dialog
@@ -27,16 +29,16 @@ export function WorkspaceHeader({ workspace }: { workspace: Workspace }) {
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5">
       <h1
-        className="min-w-0 flex-1 truncate font-heading text-base font-semibold"
+        className="min-w-0 flex-1 truncate font-heading text-[0.9375rem] font-semibold"
         title={workspace.name}
       >
         {workspace.name}
       </h1>
       <Button
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         aria-label="Rename workspace"
         title="Rename workspace"
         onClick={() => {
@@ -47,7 +49,7 @@ export function WorkspaceHeader({ workspace }: { workspace: Workspace }) {
       </Button>
       <Button
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         aria-label="Delete workspace"
         title="Delete workspace"
         onClick={() => {

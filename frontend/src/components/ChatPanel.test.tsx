@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api/client'
 import type { StreamMessageOptions } from '@/api/stream'
+import { setMatchMedia } from '@/test/matchMedia'
 import { makeDocument, makeMessage, renderWithProviders } from '@/test/render'
 
 import { ChatPanel } from './ChatPanel'
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   messages: vi.fn(),
   stream: vi.fn(),
   fileText: vi.fn(),
+  fileExists: vi.fn(),
 }))
 
 vi.mock('@/api/client', async (importOriginal) => {
@@ -26,7 +28,12 @@ vi.mock('@/api/client', async (importOriginal) => {
     api: {
       ...actual.api,
       config: { get: mocks.config },
-      documents: { ...actual.api.documents, list: mocks.documents, fileText: mocks.fileText },
+      documents: {
+        ...actual.api.documents,
+        list: mocks.documents,
+        fileText: mocks.fileText,
+        fileExists: mocks.fileExists,
+      },
       conversations: {
         ...actual.api.conversations,
         list: mocks.conversations,
@@ -114,6 +121,7 @@ describe('ChatPanel', () => {
   it('previews a citation from saved history, with the original from this workspace', async () => {
     mocks.messages.mockResolvedValue([makeMessage()])
     mocks.fileText.mockResolvedValue('')
+    mocks.fileExists.mockResolvedValue(true)
     renderPanel()
 
     const user = userEvent.setup()
@@ -121,9 +129,7 @@ describe('ChatPanel', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('We are open Monday to Friday, 9am to 5pm.')).toBeTruthy()
     expect(
-      within(dialog)
-        .getByRole('link', { name: /open original/i })
-        .getAttribute('href'),
+      (await within(dialog).findByRole('link', { name: /open original/i })).getAttribute('href'),
     ).toBe('/api/workspaces/ws1/documents/d1/file')
   })
 
@@ -263,5 +269,47 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('link', { name: 'Start a new chat' }).getAttribute('href')).toBe(
       '/w/ws1',
     )
+  })
+  it('turns the chat area into an upload area when the workspace has no documents', async () => {
+    mocks.documents.mockResolvedValue([])
+    renderPanel('/w/ws1')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Add documents to get started' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: /drop files here/i })).toBeTruthy()
+  })
+
+  it('opens the conversations and documents in sheets on narrow screens', async () => {
+    setMatchMedia(false)
+    mocks.conversations.mockResolvedValue([
+      { id: 'c2', workspace_id: 'ws1', title: 'Is there parking?', created_at: '2026-01-01' },
+    ])
+    renderWithProviders(
+      <ChatPanel workspaceId="ws1" documentsPanel={<p>The documents panel</p>} />,
+      '/w/ws1',
+    )
+    const user = userEvent.setup()
+
+    // Neither list takes room beside the chat
+    expect(screen.queryByRole('navigation', { name: 'Conversations' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /documents/i }))
+    const documents = await screen.findByRole('dialog', { name: 'Documents' })
+    expect(within(documents).getByText('The documents panel')).toBeTruthy()
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Chats' }))
+    const chats = await screen.findByRole('dialog', { name: 'Chats' })
+    await user.click(await within(chats).findByRole('link', { name: /Is there parking\?/ }))
+
+    // Picking a conversation opens it and closes the sheet
+    expect(screen.getByTestId('location').textContent).toBe('/w/ws1/c/c2')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
   })
 })

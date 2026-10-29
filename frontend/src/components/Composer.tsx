@@ -1,4 +1,4 @@
-import { SendIcon, SquareIcon } from 'lucide-react'
+import { ArrowUpIcon, SquareIcon } from 'lucide-react'
 import { type SyntheticEvent, useId } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -41,7 +41,7 @@ export function Composer({
 
   return (
     <form onSubmit={submit} className="grid gap-1.5">
-      <div className="flex items-end gap-2 rounded-xl border bg-background p-2 shadow-xs focus-within:ring-2 focus-within:ring-ring/50">
+      <div className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/15">
         <textarea
           aria-label="Ask a question"
           aria-describedby={hint ? hintId : undefined}
@@ -59,22 +59,37 @@ export function Composer({
               submit()
             }
           }}
-          className="field-sizing-content max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+          className="field-sizing-content max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-[0.9375rem] outline-none placeholder:text-muted-foreground"
         />
         {streaming ? (
-          <Button type="button" variant="outline" size="icon" aria-label="Stop" onClick={onStop}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-xl"
+            aria-label="Stop"
+            onClick={onStop}
+          >
             <SquareIcon className="fill-current" />
           </Button>
         ) : (
-          <Button type="submit" size="icon" aria-label="Send" disabled={!canSend}>
-            <SendIcon />
+          <Button
+            type="submit"
+            size="icon"
+            className="rounded-xl"
+            aria-label="Send"
+            disabled={!canSend}
+          >
+            <ArrowUpIcon />
           </Button>
         )}
       </div>
       {hint && (
         <p
           id={hintId}
-          className={tooLong ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}
+          className={
+            tooLong ? 'px-1 text-xs text-destructive' : 'px-1 text-xs text-muted-foreground'
+          }
         >
           {hint}
         </p>
