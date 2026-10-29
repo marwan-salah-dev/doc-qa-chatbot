@@ -1,0 +1,81 @@
+// Mirrors the backend's response models. Source of truth: backend/app/api/schemas.py
+// (and `citation_dict` / `_to_sse` for the streamed events). Datetimes are ISO strings.
+
+export interface Workspace {
+  id: string
+  name: string
+  created_at: string
+}
+
+export type DocumentStatus = 'pending' | 'processing' | 'ready' | 'failed'
+
+export interface DocumentItem {
+  id: string
+  workspace_id: string
+  filename: string
+  content_type: string
+  size_bytes: number
+  status: DocumentStatus
+  /** Why ingestion failed; safe to show. Only set when `status` is "failed". */
+  error: string | null
+  created_at: string
+}
+
+export interface Conversation {
+  id: string
+  workspace_id: string
+  /** The first question, shortened; empty until one is asked. */
+  title: string
+  created_at: string
+}
+
+export type FileKind = 'pdf' | 'docx' | 'txt'
+
+/** Where a source sits in its file. Which fields are set depends on `kind`:
+ * PDF uses `page` (and `page_end` when a chunk crosses pages), DOCX `heading` plus a paragraph
+ * range in `start`/`end`, TXT a line range in `start`/`end`. */
+export interface Location {
+  kind: FileKind
+  page?: number | null
+  page_end?: number | null
+  heading?: string | null
+  start?: number | null
+  end?: number | null
+}
+
+/** A source given to the model as `[number]`. `label` is the location in words. */
+export interface Citation {
+  number: number
+  document_id: string
+  filename: string
+  location: Location
+  label: string
+  text: string
+  score: number
+}
+
+export type MessageRole = 'user' | 'assistant'
+
+export interface Message {
+  id: string
+  role: MessageRole
+  content: string
+  citations: Citation[]
+  /** The answer was the fixed "not found in the documents" reply. */
+  refused: boolean
+  /** The model answered without citing any source. */
+  uncited: boolean
+  /** The reply was stopped before it finished. */
+  incomplete: boolean
+  created_at: string
+}
+
+/** Payload of the `done` event: both messages are saved. */
+export interface ReplyDone {
+  user_message_id: string
+  message_id: string
+  /** Only the sources the answer actually cites. */
+  citations: Citation[]
+  refused: boolean
+  uncited: boolean
+}

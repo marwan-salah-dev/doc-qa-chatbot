@@ -16,6 +16,7 @@ htmlcov/
 # Node
 node_modules/
 dist/
+coverage/
 *.tsbuildinfo
 
 # App data (SQLite, uploaded files, Chroma) — created at runtime

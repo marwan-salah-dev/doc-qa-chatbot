@@ -55,7 +55,7 @@ Key design points:
 - [x] **11. Chat API:** conversation CRUD, SSE `POST /workspaces/{id}/conversations/{id}/messages` (FastAPI's built-in SSE, with keep-alive pings), and saving the user and assistant messages with their citations and `refused`/`uncited`/`incomplete` flags. A client that leaves mid-answer (Stop) gets its partial answer saved as `incomplete`; errors become an `error` event and save nothing; one reply streams per conversation at a time (409, in-process guard: single worker). Token usage is logged per message. Tests: SSE event sequence, persisted history, errors, the 409 guard, and disconnects (service-level and a raw-ASGI hang-up).
 
 ### Frontend
-- [ ] **12. Scaffold:** Vite + TS + Tailwind + shadcn/ui, routing, a typed API client, TanStack Query, and the app shell/layout.
+- [x] **12. Scaffold:** Vite + TS + Tailwind + shadcn/ui, routing, a typed API client, TanStack Query, and the app shell/layout.
 - [ ] **13. Workspaces + documents UI:** workspace list/create, drag-and-drop upload with progress, status badges (with polling), delete with confirmation.
 - [ ] **14. Chat UI:** conversation sidebar, streaming message rendering (markdown), citation chips `[1]` with a source list, stop/retry, and suggested starter questions.
 - [ ] **★ Milestone: local demo you can screen-record.** One command (`scripts/dev` for backend + frontend) starts the app with a seeded demo workspace of sample business docs (pulled forward from step 17). You can then upload a file, watch it reach "ready", ask questions, get streamed answers with citations, open a past conversation, and see the "not in the documents" refusal. Includes a short demo script of questions to ask.

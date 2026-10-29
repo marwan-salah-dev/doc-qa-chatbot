@@ -23,7 +23,7 @@ Stack: Python 3.12 + FastAPI, ChromaDB, OpenAI or Anthropic (`LLM_PROVIDER`), lo
 
 ```
 backend/    FastAPI app (app/) and tests (tests/), managed with uv
-frontend/   React app (added in step 12)
+frontend/   React app (src/), Vite + TypeScript, managed with npm
 docs/       PLAN.md and other project docs
 ```
 
@@ -37,7 +37,22 @@ uv run pytest             # run the test suite
 uv run ruff check .       # lint
 uv run ruff format .      # format (use --check to verify only)
 uv run pyright            # type check (basic mode, configured in pyproject.toml)
+uv run uvicorn app.main:create_app --factory --port 8000   # start the API (there is no app.main:app)
 ```
+
+Run these from `frontend/`:
+
+```bash
+npm install               # install dependencies
+npm run dev               # start the dev server on http://localhost:5173 (proxies /api to :8000)
+npm run test              # Vitest
+npm run lint              # ESLint (typescript-eslint strict, type-aware)
+npm run typecheck         # tsc -b (strict)
+npm run format            # Prettier (format:check to verify only)
+npm run build             # production build into frontend/dist
+```
+
+Start the backend first, then the frontend, each in its own terminal. Long-running servers (uvicorn, `npm run dev`) should be started in the background, never in the foreground.
 
 On this Windows machine uv was installed through winget. A shell opened before that install may not have `uv` on PATH yet.
 
@@ -51,6 +66,7 @@ On this Windows machine uv was installed through winget. A shell opened before t
 
 ## Conventions
 
+- **Frontend:** the browser calls `/api/...`; Vite (dev) strips the prefix and proxies to the backend, so there is no CORS in development. Hand-written API types in `frontend/src/api/types.ts` mirror `backend/app/api/schemas.py`; update both together. TypeScript is pinned to 6.0 until typescript-eslint supports 7.
 - **Tests:** they never call paid APIs. Use the `Fake*` providers (fake embedder and fake chat model) and mocked SDKs.
 - **Configuration:** comes from environment variables through `pydantic-settings`. Every new setting must also be added to `backend/.env.example` with a comment (a test checks this). The app loads `backend/.env` wherever commands are run from.
 - **Ruff rules:** E, W, F, I, B, UP, SIM, RUF, with line length 100. Keep `ruff check` and `ruff format --check` clean.
