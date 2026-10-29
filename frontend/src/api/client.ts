@@ -105,6 +105,12 @@ export const api = {
     /** The original file, for previews and downloads. */
     fileUrl: (workspaceId: string, id: string) =>
       apiPath`/workspaces/${workspaceId}/documents/${id}/file`,
+    /** The original of a text file, for showing a passage among the lines around it. */
+    fileText: async (workspaceId: string, id: string) => {
+      const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`)
+      if (!response.ok) throw await errorFromResponse(response)
+      return response.text()
+    },
   },
 
   conversations: {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   messages: vi.fn(),
   stream: vi.fn(),
+  fileText: vi.fn(),
 }))
 
 vi.mock('@/api/client', async (importOriginal) => {
@@ -25,7 +26,7 @@ vi.mock('@/api/client', async (importOriginal) => {
     api: {
       ...actual.api,
       config: { get: mocks.config },
-      documents: { ...actual.api.documents, list: mocks.documents },
+      documents: { ...actual.api.documents, list: mocks.documents, fileText: mocks.fileText },
       conversations: {
         ...actual.api.conversations,
         list: mocks.conversations,
@@ -108,6 +109,22 @@ describe('ChatPanel', () => {
 
     const sources = await screen.findByRole('list', { name: 'Sources' })
     expect(sources.textContent).toContain('faq.txt · lines 3–8')
+  })
+
+  it('previews a citation from saved history, with the original from this workspace', async () => {
+    mocks.messages.mockResolvedValue([makeMessage()])
+    mocks.fileText.mockResolvedValue('')
+    renderPanel()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /Source 1: faq\.txt/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('We are open Monday to Friday, 9am to 5pm.')).toBeTruthy()
+    expect(
+      within(dialog)
+        .getByRole('link', { name: /open original/i })
+        .getAttribute('href'),
+    ).toBe('/api/workspaces/ws1/documents/d1/file')
   })
 
   it('explains why sending is disabled while documents are indexing', async () => {

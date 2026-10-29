@@ -1,12 +1,6 @@
 import type { Citation } from '@/api/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { CitationPreview } from '@/components/CitationPreview'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface CitationChipProps {
@@ -15,13 +9,12 @@ interface CitationChipProps {
   variant?: 'inline' | 'source'
 }
 
-/** A cited source. Clicking it shows the passage the answer used (step 15 replaces this
- * popover with the full preview panel). */
+/** A cited source. Clicking it opens the preview panel with the passage in its file. */
 export function CitationChip({ citation, variant = 'inline' }: CitationChipProps) {
   const inline = variant === 'inline'
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <button
           type="button"
           aria-label={
@@ -48,16 +41,8 @@ export function CitationChip({ citation, variant = 'inline' }: CitationChipProps
             </>
           )}
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 max-w-[calc(100vw-2rem)]" align="start">
-        <PopoverHeader>
-          <PopoverTitle className="truncate">{citation.filename}</PopoverTitle>
-          <PopoverDescription>{citation.label}</PopoverDescription>
-        </PopoverHeader>
-        <blockquote className="max-h-60 overflow-y-auto border-l-2 pl-3 text-xs leading-relaxed whitespace-pre-wrap">
-          {citation.text}
-        </blockquote>
-      </PopoverContent>
-    </Popover>
+      </DialogTrigger>
+      <CitationPreview citation={citation} />
+    </Dialog>
   )
 }

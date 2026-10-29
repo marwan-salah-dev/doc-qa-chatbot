@@ -63,7 +63,7 @@ Key design points:
   - [x] **One command:** `scripts\dev.ps1` (Windows PowerShell) starts the backend and frontend in their own windows, waits for `/health`, then seeds the demo. Ctrl+C or closing the windows stops the servers, and servers already running are reused.
   - [x] **Demo script:** [docs/DEMO.md](DEMO.md), a 60-90 second shot list (hours chip → handbook citation → implant + follow-up → parking refusal), with prep notes (delete old chats, pause ~60 s for Groq's limit).
   - [ ] Record the video.
-- [ ] **15. Citation preview panel:** a PDF opens at the cited page with `react-pdf` and the cited passage shown. DOCX and TXT show the passage with its heading or line context.
+- [x] **15. Citation preview panel:** a PDF opens at the cited page with `react-pdf` and the cited passage shown. DOCX and TXT show the passage with its heading or line context. Clicking any chip (inline or under the answer) opens a side panel (full screen on a phone) built from the citation itself, so live and saved answers behave the same; no new endpoint, only the existing `GET .../file`. PDFs render the cited page(s) with the passage's text runs highlighted (react-pdf 11, MIT, lazy-loaded with `suspense={false}` plus an error boundary). TXT shows the cited lines numbered as in the file with 3 lines either side. DOCX shows the heading and paragraph range above the passage. If the original is gone (a deleted or reseeded document), the panel says so and still shows the passage.
 - [ ] **16. Polish:** empty, loading and error states, toasts, a responsive/mobile layout, keyboard and accessibility checks, light/dark theme, and favicon/branding.
 
 ### Ship

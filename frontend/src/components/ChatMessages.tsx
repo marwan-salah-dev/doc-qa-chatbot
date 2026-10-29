@@ -77,7 +77,7 @@ export function AssistantMessage({
   const cited = citedInOrder(content, citations)
 
   return (
-    <div className="grid gap-2" aria-busy={streaming}>
+    <div className="grid grid-cols-1 gap-2" aria-busy={streaming}>
       {content ? (
         <Markdown text={content} citations={citations} />
       ) : (

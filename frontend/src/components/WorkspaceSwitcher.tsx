@@ -26,7 +26,7 @@ export function WorkspaceSwitcher() {
   const hasWorkspaces = Boolean(workspaces.data?.length)
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {hasWorkspaces && (
         <Select
           value={workspaceId ?? ''}
@@ -34,7 +34,7 @@ export function WorkspaceSwitcher() {
             void navigate(`/w/${value}`)
           }}
         >
-          <SelectTrigger className="w-56" aria-label="Workspace">
+          <SelectTrigger className="w-56 min-w-0" aria-label="Workspace">
             <SelectValue placeholder="Select a workspace" />
           </SelectTrigger>
           <SelectContent position="popper" align="start">

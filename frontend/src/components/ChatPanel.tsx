@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client'
 import { useConfig, useCreateConversation, useDocuments, useMessages } from '@/api/queries'
 import { isTurnSaved, useChatStream } from '@/api/useChatStream'
 import { AssistantMessage, UserMessage } from '@/components/ChatMessages'
+import { CitationPreviewProvider } from '@/components/CitationPreview'
 import { Composer } from '@/components/Composer'
 import { ConversationList } from '@/components/ConversationList'
 import { Button } from '@/components/ui/button'
@@ -123,7 +124,7 @@ export function ChatPanel({
     )
   } else {
     thread = (
-      <ol aria-label="Messages" className="mx-auto grid w-full max-w-3xl gap-5 p-4">
+      <ol aria-label="Messages" className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 p-4">
         {saved.map((message) => (
           <li key={message.id}>
             {message.role === 'user' ? (
@@ -168,7 +169,7 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
       <div className="max-h-48 shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-60 lg:border-r lg:border-b-0">
         <ConversationList
           workspaceId={workspaceId}
@@ -177,7 +178,7 @@ export function ChatPanel({
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div ref={threadRef} onScroll={onScroll} className="flex flex-1 flex-col overflow-y-auto">
-          {thread}
+          <CitationPreviewProvider workspaceId={workspaceId}>{thread}</CitationPreviewProvider>
         </div>
         <div className="mx-auto grid w-full max-w-3xl gap-2 px-4 pt-1 pb-4">
           {sendError && (
