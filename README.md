@@ -28,13 +28,27 @@ An AI support agent that answers customer questions **only from a business's own
 ## Project layout
 
 ```
-backend/    FastAPI app and tests
+backend/    FastAPI app, tests, demo documents (demo_data/) and their scripts (scripts/)
 frontend/   React app
+scripts/    dev.ps1: start everything locally and seed the demo
+docs/       plan and demo script
 ```
 
 ## Development
 
 Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), Node 20.19+ or 22.12+ (required by Vite 8).
+
+### One command (Windows PowerShell)
+
+After the one-time setup below (`.env`, `uv sync`, `npm install`), run this from the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev.ps1
+```
+
+It starts the backend and the frontend in their own windows, waits until the API is up, and seeds the **Demo: BrightSmile Dental** workspace with sample documents (it is safe to run again: nothing is duplicated). Then open http://localhost:5173. Press Ctrl+C in the script's window to stop both servers, or close a server's window to stop that server. [docs/DEMO.md](docs/DEMO.md) has a short demo recording script.
+
+### Step by step
 
 Backend (first terminal):
 
@@ -53,4 +67,11 @@ cd frontend
 npm install
 npm run test
 npm run dev            # http://localhost:5173, proxies /api to the backend on :8000
+```
+
+Demo workspace (with the backend running):
+
+```bash
+cd backend
+uv run python -m scripts.seed_demo
 ```

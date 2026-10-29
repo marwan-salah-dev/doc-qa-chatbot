@@ -22,9 +22,10 @@ Stack: Python 3.12 + FastAPI, ChromaDB, OpenAI or Anthropic (`LLM_PROVIDER`), lo
 ## Layout
 
 ```
-backend/    FastAPI app (app/) and tests (tests/), managed with uv
+backend/    FastAPI app (app/), tests (tests/), demo docs (demo_data/) and their scripts (scripts/), managed with uv
 frontend/   React app (src/), Vite + TypeScript, managed with npm
-docs/       PLAN.md and other project docs
+scripts/    dev.ps1: start backend + frontend and seed the demo
+docs/       PLAN.md, DEMO.md (recording script) and other project docs
 ```
 
 ## Key commands
@@ -38,6 +39,8 @@ uv run ruff check .       # lint
 uv run ruff format .      # format (use --check to verify only)
 uv run pyright            # type check (basic mode, configured in pyproject.toml)
 uv run uvicorn app.main:create_app --factory --port 8000 --reload   # start the API in development; --reload picks up backend changes (there is no app.main:app)
+uv run python -m scripts.seed_demo        # seed "Demo: BrightSmile Dental" through the running API (idempotent)
+uv run python -m scripts.build_demo_docs  # rebuild demo_data/ after editing scripts/demo_content.py (reportlab, dev-only)
 ```
 
 Run these from `frontend/`:
@@ -52,7 +55,7 @@ npm run format            # Prettier (format:check to verify only)
 npm run build             # production build into frontend/dist
 ```
 
-Start the backend first, then the frontend, each in its own terminal. Long-running servers (uvicorn, `npm run dev`) should be started in the background, never in the foreground.
+From the repo root, `powershell -ExecutionPolicy Bypass -File scripts\dev.ps1` starts both servers in their own windows, waits for `/health`, then seeds the demo (Ctrl+C stops both; servers already running are reused). Otherwise start the backend first, then the frontend, each in its own terminal. Long-running servers (uvicorn, `npm run dev`) should be started in the background, never in the foreground.
 
 On this Windows machine uv was installed through winget. A shell opened before that install may not have `uv` on PATH yet.
 
