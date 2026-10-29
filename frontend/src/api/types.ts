@@ -12,6 +12,8 @@ export interface Workspace {
   id: string
   name: string
   created_at: string
+  /** Suggested first questions for a new chat; empty except in the seeded demo workspace */
+  starter_questions: string[]
 }
 
 export type DocumentStatus = 'pending' | 'processing' | 'ready' | 'failed'

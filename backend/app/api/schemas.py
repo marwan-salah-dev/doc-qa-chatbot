@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.db.models import DocumentStatus, MessageRole
+from app.demo import starter_questions
 from app.services.parsers import FileKind
 
 # Long enough for any real question; stops one request filling the token budget
@@ -31,6 +32,12 @@ class WorkspaceOut(BaseModel):
     id: str
     name: str
     created_at: datetime
+
+    @computed_field
+    @property
+    def starter_questions(self) -> list[str]:
+        """Suggested first questions, shown as chips in a new chat (the demo workspace only)."""
+        return starter_questions(self.name)
 
 
 class DocumentOut(BaseModel):

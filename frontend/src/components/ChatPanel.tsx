@@ -14,7 +14,14 @@ import { sendBlockedReason } from '@/lib/chat'
 
 /** The chat area: the workspace's conversations beside the open one's thread and the question
  * box. With no conversation in the URL it is a new chat, created by its first question. */
-export function ChatPanel({ workspaceId }: { workspaceId: string }) {
+export function ChatPanel({
+  workspaceId,
+  starterQuestions = [],
+}: {
+  workspaceId: string
+  /** Suggested first questions, shown as chips in a new chat (only the demo workspace has any) */
+  starterQuestions?: string[]
+}) {
   const { conversationId } = useParams()
   const navigate = useNavigate()
   const config = useConfig()
@@ -27,6 +34,7 @@ export function ChatPanel({ workspaceId }: { workspaceId: string }) {
 
   const saved = messages.data ?? []
   const streaming = turn?.status === 'streaming'
+  const blockedReason = sendBlockedReason(documents.data)
   // The question asked here, until the saved messages include it (see isTurnSaved)
   const visibleTurn =
     turn && turn.conversationId === conversationId && !isTurnSaved(turn, saved) ? turn : null
@@ -94,6 +102,23 @@ export function ChatPanel({ workspaceId }: { workspaceId: string }) {
         <p className="text-sm text-muted-foreground">
           Answers come only from the files in this workspace, with a source for every claim.
         </p>
+        {starterQuestions.length > 0 && (
+          <ul aria-label="Suggested questions" className="mt-3 flex flex-wrap justify-center gap-2">
+            {starterQuestions.map((question) => (
+              <li key={question}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-auto rounded-full py-1.5 text-left whitespace-normal"
+                  disabled={streaming || blockedReason !== undefined}
+                  onClick={() => void send(question)}
+                >
+                  {question}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     )
   } else {
@@ -166,7 +191,7 @@ export function ChatPanel({ workspaceId }: { workspaceId: string }) {
             onSend={(question) => void send(question)}
             onStop={stop}
             streaming={streaming}
-            blockedReason={sendBlockedReason(documents.data)}
+            blockedReason={blockedReason}
             maxChars={config.data?.max_question_chars}
           />
         </div>

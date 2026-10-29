@@ -1,0 +1,31 @@
+BrightSmile Dental - Frequently asked questions
+
+Q: Where is the clinic?
+A: We are at 48 Larkspur Avenue, Suite 200, Millbrook.
+
+Q: How do I book an appointment?
+A: Book online at brightsmile.example.com, call reception on (555) 555-0147, or email hello@brightsmile.example.com.
+
+Q: What should I bring to my first visit?
+A: Photo ID, your insurance card and a list of any medicines you take. Please arrive 15 minutes early to fill in a medical history form.
+
+Q: Do you see children?
+A: Yes, from age 2. A children's check-up for under-12s costs $60.
+
+Q: How much is a check-up and clean?
+A: A check-up and clean costs $95. We recommend one every 6 months.
+
+Q: Can I cancel or move my appointment?
+A: Yes, with at least 24 hours' notice. Later cancellations and missed appointments are charged $40.
+
+Q: Do you accept my insurance?
+A: We are in network with Northwind Health, Bluepeak Dental Plans, Harbor Mutual and Evergreen Care. With other insurers you pay in full and claim back with our itemised receipt.
+
+Q: I have toothache at the weekend. What should I do?
+A: Call our emergency line on (555) 555-0199. An on-call dentist answers from 8:00 am to 8:00 pm on weekends and public holidays.
+
+Q: Do you offer payment plans?
+A: Yes. Treatments over $1,000 can be spread over up to 12 months at 0% interest after a $200 deposit.
+
+Q: How long does teeth whitening take?
+A: In-office whitening takes one 90-minute visit and costs $350.

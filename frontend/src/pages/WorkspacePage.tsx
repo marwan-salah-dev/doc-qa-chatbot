@@ -45,7 +45,7 @@ export function WorkspacePage() {
         <DocumentList workspaceId={workspace.id} />
       </aside>
       <section aria-label="Chat" className="flex h-[calc(100svh-3.5rem-1px)] min-w-0 flex-1">
-        <ChatPanel workspaceId={workspace.id} />
+        <ChatPanel workspaceId={workspace.id} starterQuestions={workspace.starter_questions} />
       </section>
     </div>
   )

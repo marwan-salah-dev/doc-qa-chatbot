@@ -46,7 +46,13 @@ export function makeDocument(overrides: Partial<DocumentItem> = {}): DocumentIte
 }
 
 export function makeWorkspace(overrides: Partial<Workspace> = {}): Workspace {
-  return { id: 'ws1', name: 'Acme Dental', created_at: '2026-01-01T00:00:00Z', ...overrides }
+  return {
+    id: 'ws1',
+    name: 'Acme Dental',
+    created_at: '2026-01-01T00:00:00Z',
+    starter_questions: [],
+    ...overrides,
+  }
 }
 
 export function makeCitation(overrides: Partial<Citation> = {}): Citation {

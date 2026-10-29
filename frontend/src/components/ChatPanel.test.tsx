@@ -38,9 +38,14 @@ vi.mock('@/api/client', async (importOriginal) => {
 
 vi.mock('@/api/stream', () => ({ streamMessage: mocks.stream }))
 
-function renderPanel(route = '/w/ws1/c/c1') {
-  return renderWithProviders(<ChatPanel workspaceId="ws1" />, route)
+function renderPanel(route = '/w/ws1/c/c1', starterQuestions?: string[]) {
+  return renderWithProviders(
+    <ChatPanel workspaceId="ws1" starterQuestions={starterQuestions} />,
+    route,
+  )
 }
+
+const STARTERS = ['What are your opening hours?', 'Is there parking?']
 
 async function ask(question: string) {
   const user = userEvent.setup()
@@ -147,6 +152,48 @@ describe('ChatPanel', () => {
     })
     expect(mocks.create).toHaveBeenCalledWith('ws1')
     expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 'c9' }))
+  })
+
+  it('offers starter questions in a new chat and asks one when clicked', async () => {
+    mocks.create.mockResolvedValue({
+      id: 'c9',
+      workspace_id: 'ws1',
+      title: '',
+      created_at: '2026-01-01T00:00:00Z',
+    })
+    mocks.stream.mockResolvedValue(undefined)
+    renderPanel('/w/ws1', STARTERS)
+
+    const starters = await screen.findByRole('list', { name: 'Suggested questions' })
+    expect(starters.textContent).toContain('Is there parking?')
+    const chip = screen.getByRole('button', { name: 'What are your opening hours?' })
+    await waitFor(() => {
+      expect(chip.hasAttribute('disabled')).toBe(false)
+    })
+    await userEvent.setup().click(chip)
+
+    await waitFor(() => {
+      expect(mocks.stream).toHaveBeenCalledWith(
+        expect.objectContaining({ conversationId: 'c9', question: 'What are your opening hours?' }),
+      )
+    })
+  })
+
+  it('shows no starter questions when the workspace has none', async () => {
+    renderPanel('/w/ws1')
+
+    expect(await screen.findByText('Ask about your documents')).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Suggested questions' })).toBeNull()
+  })
+
+  it('disables the starter questions until a document is ready', async () => {
+    mocks.documents.mockResolvedValue([makeDocument({ status: 'processing' })])
+    renderPanel('/w/ws1', STARTERS)
+
+    expect(await screen.findByText(/still being indexed/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Is there parking?' }).hasAttribute('disabled')).toBe(
+      true,
+    )
   })
 
   it('shows an error with a Retry that asks again', async () => {
