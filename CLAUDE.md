@@ -48,7 +48,7 @@ Run these from `frontend/`:
 ```bash
 npm install               # install dependencies
 npm run dev               # start the dev server on http://localhost:5173 (proxies /api to :8000)
-npm run test              # Vitest
+npm run test              # Vitest, single run with a 10 s test timeout (add a file path to run one file; use this, not npx vitest)
 npm run lint              # ESLint (typescript-eslint strict, type-aware)
 npm run typecheck         # tsc -b (strict)
 npm run format            # Prettier (format:check to verify only)
