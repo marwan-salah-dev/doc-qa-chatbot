@@ -6,11 +6,14 @@ Start the backend first, then run from backend/:
 
 It goes through the running API, so the files are validated, deduplicated and indexed exactly
 like a browser upload (and the server stays the only process writing to its Chroma store). It is
-safe to run again: the workspace is found by name, files already in it are skipped, and a file
-that failed to index is reindexed. Other workspaces are never touched.
+safe to run again: the workspace is found by name, files already in it are skipped, a file that
+failed to index is reindexed, and a file whose committed copy has changed (a different SHA-256)
+is deleted and uploaded again, so edits to demo_data/ reach the index. Other workspaces are never
+touched.
 """
 
 import argparse
+import hashlib
 import sys
 import time
 from dataclasses import dataclass, field
@@ -50,6 +53,7 @@ class ApiClient(Protocol):
 
     def get(self, url: str) -> ApiResponse: ...
     def post(self, url: str, *, json: Any = None, files: Any = None) -> ApiResponse: ...
+    def delete(self, url: str) -> ApiResponse: ...
 
 
 class SeedError(Exception):
@@ -62,6 +66,7 @@ class SeedResult:
     created_workspace: bool
     uploaded: list[str] = field(default_factory=list)
     reindexed: list[str] = field(default_factory=list)
+    replaced: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
 
 
@@ -78,12 +83,19 @@ def seed(
     existing = {doc["filename"]: doc for doc in _documents(client, workspace_id)}
 
     for name in DEMO_FILES:
+        path = data_dir / name
         doc = existing.get(name)
         if doc is None:
-            if _upload(client, workspace_id, data_dir / name):
+            if _upload(client, workspace_id, path):
                 result.uploaded.append(name)
             else:
                 result.skipped.append(name)
+        elif doc["sha256"] != hashlib.sha256(path.read_bytes()).hexdigest():
+            # The committed file changed: replace it (deleting also drops its chunks and file)
+            url = f"/workspaces/{workspace_id}/documents/{doc['id']}"
+            _check(client.delete(url), f"DELETE {url}")
+            _upload(client, workspace_id, path)
+            result.replaced.append(name)
         elif doc["status"] == "failed":
             url = f"/workspaces/{workspace_id}/documents/{doc['id']}/reindex"
             _check(client.post(url), f"POST {url}")
@@ -176,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     for label, names in (
         ("Uploaded", result.uploaded),
         ("Reindexed", result.reindexed),
+        ("Replaced (file changed)", result.replaced),
         ("Already present", result.skipped),
     ):
         if names:

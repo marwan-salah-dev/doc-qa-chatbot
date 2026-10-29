@@ -24,6 +24,8 @@ export interface DocumentItem {
   filename: string
   content_type: string
   size_bytes: number
+  /** Hex SHA-256 of the file */
+  sha256: string
   status: DocumentStatus
   /** Why ingestion failed; safe to show. Only set when `status` is "failed". */
   error: string | null

@@ -10,6 +10,7 @@ function doc(status: DocumentStatus): DocumentItem {
     filename: `${status}.txt`,
     content_type: 'text/plain',
     size_bytes: 1,
+    sha256: 'a'.repeat(64),
     status,
     error: null,
     created_at: '2026-01-01T00:00:00Z',

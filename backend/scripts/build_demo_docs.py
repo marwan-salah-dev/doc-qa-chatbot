@@ -23,7 +23,6 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from scripts import demo_content as content
@@ -60,14 +59,10 @@ def build_pdf() -> bytes:
                 story.append(Paragraph(escape(text[2:]), bullet, bulletText="•"))
             else:
                 story.append(Paragraph(escape(text), body))
-
-    def footer(canvas: Canvas, doc: SimpleDocTemplate) -> None:
-        canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(colors.grey)
-        canvas.drawString(inch, 0.6 * inch, content.DISCLAIMER)
-        canvas.drawRightString(LETTER[0] - inch, 0.6 * inch, f"Page {doc.page}")
-        canvas.restoreState()
+    # Once, at the very end. Not a page footer: footer text is extracted with every page, so it
+    # would lead each page's chunk and every PDF citation preview.
+    closing = ParagraphStyle("Closing", parent=body, fontSize=8, textColor=colors.grey)
+    story += [Spacer(1, 18), Paragraph(escape(content.DISCLAIMER), closing)]
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -81,7 +76,7 @@ def build_pdf() -> bytes:
         bottomMargin=inch,
         invariant=1,  # no timestamps or random ids in the file
     )
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    doc.build(story)
     return buffer.getvalue()
 
 

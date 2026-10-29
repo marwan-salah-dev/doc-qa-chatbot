@@ -31,6 +31,6 @@ A short screen recording of the seeded **Demo: BrightSmile Dental** workspace (a
 
 ## Notes
 
-- The clinic, its phone numbers (555-01xx), its email (`example.com`) and its street are fictional. The PDF and DOCX carry the footer "Fictional clinic, created for a software demo."
+- The clinic, its phone numbers (555-01xx), its email (`example.com`) and its street are fictional. "Fictional clinic, created for a software demo." closes the PDF handbook (once, at the end, so it stays out of page citations) and is the DOCX footer (which the parser doesn't read).
 - If an answer is refused when it shouldn't be, check that all three documents are **Ready**. Then rerun `scripts\dev.ps1` (or `uv run python -m scripts.seed_demo` from `backend/`), which reindexes any failed file.
-- To change the demo content, edit `backend/scripts/demo_content.py`, rebuild the files with `uv run python -m scripts.build_demo_docs`, and commit `backend/demo_data/`. Uploads are skipped by filename, so delete the demo workspace in the UI before reseeding, otherwise the old files stay.
+- To change the demo content, edit `backend/scripts/demo_content.py`, rebuild the files with `uv run python -m scripts.build_demo_docs`, and commit `backend/demo_data/`. The next seed run sees the changed file (its SHA-256 differs from the stored one) and replaces that document.

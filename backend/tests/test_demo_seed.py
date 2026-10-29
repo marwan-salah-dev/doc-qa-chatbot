@@ -1,7 +1,9 @@
 """The BrightSmile Dental demo: the committed sample files and the seed script that loads them."""
 
+import hashlib
 from collections.abc import Callable
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from docx import Document as DocxDocument
@@ -90,11 +92,23 @@ def test_contact_details_are_clearly_fictional() -> None:
     assert content.EMAIL.endswith("example.com")
 
 
-def test_the_disclaimer_is_on_the_pdf_and_docx_but_not_the_faq() -> None:
-    reader = PdfReader(BytesIO(file_bytes(PDF)))
-    assert all(content.DISCLAIMER in (page.extract_text() or "") for page in reader.pages)
+def test_the_pdf_disclaimer_is_one_closing_line_on_the_last_page() -> None:
+    # Not a per-page footer: that text would lead every page's chunk and every PDF citation
+    pages = [page.extract_text() or "" for page in PdfReader(BytesIO(file_bytes(PDF))).pages]
+    assert all(content.DISCLAIMER not in text for text in pages[:-1])
+    assert pages[-1].count(content.DISCLAIMER) == 1
+    assert pages[-1].rstrip().endswith(content.DISCLAIMER)
+    assert pages[0].lstrip().startswith(content.HANDBOOK_TITLE)
+
+
+def test_the_docx_disclaimer_is_a_footer_that_parsing_ignores() -> None:
     docx = DocxDocument(BytesIO(file_bytes(DOCX)))
     assert content.DISCLAIMER in "\n".join(p.text for p in docx.sections[0].footer.paragraphs)
+    # Our DOCX parser reads the body only, so the footer never reaches a chunk or citation
+    assert content.DISCLAIMER not in parsed_text(DOCX)
+
+
+def test_the_faq_has_no_disclaimer() -> None:
     assert "fictional" not in file_bytes(TXT).decode().lower()
 
 
@@ -167,14 +181,40 @@ def test_seed_reindexes_a_failed_demo_document(client: TestClient) -> None:
     assert {d["status"] for d in documents(client, first.workspace_id)} == {"ready"}
 
 
-def test_seed_reports_a_document_that_fails_to_index(
-    make_client: Callable[..., TestClient], tmp_path
-) -> None:
-    client = make_client()
+def copy_demo_files(tmp_path: Path) -> Path:
     data_dir = tmp_path / "demo"
     data_dir.mkdir()
     for name in DEMO_FILES:
         (data_dir / name).write_bytes(file_bytes(name))
+    return data_dir
+
+
+def test_seed_replaces_a_demo_document_whose_file_changed(
+    client: TestClient, tmp_path: Path
+) -> None:
+    data_dir = copy_demo_files(tmp_path)
+    first = seed(client, data_dir=data_dir, poll_interval=0)
+    before = {d["filename"]: d for d in documents(client, first.workspace_id)}
+    changed = file_bytes(TXT) + b"Q: Do you open late on Thursdays?\nA: No.\n"
+    (data_dir / TXT).write_bytes(changed)
+
+    second = seed(client, data_dir=data_dir, poll_interval=0)
+
+    assert second.replaced == [TXT]
+    assert sorted(second.skipped) == sorted([PDF, DOCX])
+    after = {d["filename"]: d for d in documents(client, first.workspace_id)}
+    assert sorted(after) == sorted(DEMO_FILES)
+    assert after[TXT]["id"] != before[TXT]["id"]
+    assert after[TXT]["sha256"] == hashlib.sha256(changed).hexdigest()
+    assert after[PDF]["id"] == before[PDF]["id"]
+    assert {d["status"] for d in after.values()} == {"ready"}
+    # The old document is gone, so its chunks and stored file went with it
+    response = client.get(f"/workspaces/{first.workspace_id}/documents/{before[TXT]['id']}")
+    assert response.status_code == 404
+
+
+def test_seed_reports_a_document_that_fails_to_index(client: TestClient, tmp_path: Path) -> None:
+    data_dir = copy_demo_files(tmp_path)
     (data_dir / PDF).write_bytes(b"%PDF-1.4 not really a pdf")
 
     with pytest.raises(SeedError, match=PDF):

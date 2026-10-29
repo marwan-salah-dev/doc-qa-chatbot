@@ -48,6 +48,8 @@ class DocumentOut(BaseModel):
     filename: str
     content_type: str
     size_bytes: int
+    # Hex SHA-256 of the file; lets a client tell whether its copy differs from the stored one
+    sha256: str
     status: DocumentStatus
     error: str | None
     created_at: datetime

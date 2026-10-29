@@ -38,6 +38,7 @@ export function makeDocument(overrides: Partial<DocumentItem> = {}): DocumentIte
     filename: 'a.txt',
     content_type: 'text/plain',
     size_bytes: 2048,
+    sha256: 'a'.repeat(64),
     status: 'ready',
     error: null,
     created_at: '2026-01-01T00:00:00Z',
