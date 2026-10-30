@@ -54,7 +54,7 @@ markers = [
 ]
 
 [tool.pyright]
-include = ["app", "scripts", "tests"]
+include = ["app", "eval", "scripts", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 venvPath = "."

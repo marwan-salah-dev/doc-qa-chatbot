@@ -220,6 +220,15 @@ def fit_budget(
     return _flatten(turns), number_sources(kept)
 
 
+def build_condense_prompt(question: str, history: Sequence[ChatMessage]) -> str:
+    """The condense call's user message: the conversation so far, then the follow-up."""
+    transcript = "\n".join(
+        f"{'User' if message.role == 'user' else 'Assistant'}: {message.content}"
+        for message in history
+    )
+    return f"Conversation:\n{transcript}\n\nFollow-up question: {question}"
+
+
 def _clean_history(history: Sequence[ChatMessage]) -> list[ChatMessage]:
     return [
         ChatMessage(message.role, strip_citation_markers(message.content))
@@ -337,13 +346,8 @@ class RagService:
         """Rewrite a follow-up ("how long does it take?") so retrieval can find it on its own."""
         if not history:
             return question
-        transcript = "\n".join(
-            f"{'User' if message.role == 'user' else 'Assistant'}: {message.content}"
-            for message in history
-        )
-        prompt = f"Conversation:\n{transcript}\n\nFollow-up question: {question}"
         rewrite = await self._chat.complete(
-            [ChatMessage("user", prompt)],
+            [ChatMessage("user", build_condense_prompt(question, history))],
             system=CONDENSE_PROMPT,
             max_tokens=CONDENSE_MAX_TOKENS,
             on_usage=on_usage,

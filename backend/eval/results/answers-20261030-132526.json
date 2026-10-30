@@ -1,0 +1,190 @@
+{
+  "commit": "3bf8795+dirty",
+  "settings": {
+    "llm_provider": "openai",
+    "llm_model": "openai/gpt-oss-120b",
+    "embedding_provider": "local",
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "rag_top_k": 6,
+    "rag_min_score": 0.45,
+    "rag_token_budget": 5500,
+    "llm_max_output_tokens": 2048,
+    "chunk_size_tokens": 350,
+    "chunk_overlap_tokens": 50
+  },
+  "estimate": {
+    "worst_case_tokens": 25903,
+    "llm_calls": 9
+  },
+  "summary": {
+    "passed": 1.0,
+    "answer_accuracy": 1.0,
+    "facts_ok": 1.0,
+    "citation_file_accuracy": 1.0,
+    "citation_section_accuracy": 1.0,
+    "refusal_accuracy": 1.0,
+    "uncited": 0,
+    "errors": 0,
+    "input_tokens": 8216,
+    "output_tokens": 969
+  },
+  "rows": [
+    {
+      "id": "hours-saturday",
+      "kind": "answerable",
+      "question": "What are your opening hours on Saturday?",
+      "answer": "Saturday: 9:00 am to 1:00 pm [1]",
+      "standalone_question": "What are your opening hours on Saturday?",
+      "citations": [
+        "brightsmile-patient-handbook.pdf · 1. Opening hours · page 1"
+      ],
+      "passed": true,
+      "refused": false,
+      "refused_by": null,
+      "missing_facts": [],
+      "cited_file_ok": true,
+      "cited_section_ok": true,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1014,
+      "output_tokens": 69
+    },
+    {
+      "id": "cancel-fee",
+      "kind": "answerable",
+      "question": "How much is the late cancellation fee?",
+      "answer": "The late cancellation fee is $40 [1][2][3].",
+      "standalone_question": "How much is the late cancellation fee?",
+      "citations": [
+        "brightsmile-faq.txt · Can I cancel or move my appointment? · lines 18-19",
+        "brightsmile-patient-handbook.pdf · 2. Booking and cancellations · page 1",
+        "brightsmile-price-list.docx · Payment and cancellation notes · paragraphs 17-19"
+      ],
+      "passed": true,
+      "refused": false,
+      "refused_by": null,
+      "missing_facts": [],
+      "cited_file_ok": true,
+      "cited_section_ok": true,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1060,
+      "output_tokens": 93
+    },
+    {
+      "id": "knocked-out",
+      "kind": "answerable",
+      "question": "my son knocked his front tooth out playing football what do we do",
+      "answer": "Hold the tooth by the crown, place it in milk, and get to a dentist as quickly as possible—ideally within 60 minutes—to maximize the chance of saving it. Call BrightSmile’s emergency line at (555) 555‑0199; an on‑call dentist will answer from 8:00 am to 8:00 pm on weekends and public holidays and can arrange urgent care. [2]",
+      "standalone_question": "my son knocked his front tooth out playing football what do we do",
+      "citations": [
+        "brightsmile-patient-handbook.pdf · 5. Dental emergencies · page 2"
+      ],
+      "passed": true,
+      "refused": false,
+      "refused_by": null,
+      "missing_facts": [],
+      "cited_file_ok": true,
+      "cited_section_ok": true,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1136,
+      "output_tokens": 232
+    },
+    {
+      "id": "root-canal-price",
+      "kind": "answerable",
+      "question": "how much for a root canal on a back tooth",
+      "answer": "A root canal treatment for a molar costs $980[2]",
+      "standalone_question": "how much for a root canal on a back tooth",
+      "citations": [
+        "brightsmile-price-list.docx · Treatments and prices · paragraphs 3-16"
+      ],
+      "passed": true,
+      "refused": false,
+      "refused_by": null,
+      "missing_facts": [],
+      "cited_file_ok": true,
+      "cited_section_ok": true,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1087,
+      "output_tokens": 69
+    },
+    {
+      "id": "implant-instalments",
+      "kind": "followup",
+      "question": "Can I pay for it in instalments?",
+      "answer": "Yes. Dental implants (priced at $2,400) qualify for the 0 % interest payment plan: you make a $200 deposit and the remaining balance can be split into up to 12 equal monthly instalments (for example, 11 × $200) [1][4].",
+      "standalone_question": "Can I pay for the $2,400 dental implant in installments?",
+      "citations": [
+        "brightsmile-patient-handbook.pdf · 4. Payments and refunds · page 2",
+        "brightsmile-price-list.docx · Payment and cancellation notes · paragraphs 17-19"
+      ],
+      "passed": true,
+      "refused": false,
+      "refused_by": null,
+      "missing_facts": [],
+      "cited_file_ok": true,
+      "cited_section_ok": true,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1432,
+      "output_tokens": 293
+    },
+    {
+      "id": "weather",
+      "kind": "unanswerable",
+      "question": "What's the weather going to be like in Paris tomorrow?",
+      "answer": "I couldn't find this in your documents.",
+      "standalone_question": "What's the weather going to be like in Paris tomorrow?",
+      "citations": [],
+      "passed": true,
+      "refused": true,
+      "refused_by": "llm",
+      "missing_facts": [],
+      "cited_file_ok": false,
+      "cited_section_ok": false,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 486,
+      "output_tokens": 67
+    },
+    {
+      "id": "parking",
+      "kind": "unanswerable",
+      "question": "Is there parking at the clinic?",
+      "answer": "I couldn't find this in your documents.",
+      "standalone_question": "Is there parking at the clinic?",
+      "citations": [],
+      "passed": true,
+      "refused": true,
+      "refused_by": "llm",
+      "missing_facts": [],
+      "cited_file_ok": false,
+      "cited_section_ok": false,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 908,
+      "output_tokens": 71
+    },
+    {
+      "id": "sedation",
+      "kind": "unanswerable",
+      "question": "Can I be sedated if I'm really nervous about treatment?",
+      "answer": "I couldn't find this in your documents.",
+      "standalone_question": "Can I be sedated if I'm really nervous about treatment?",
+      "citations": [],
+      "passed": true,
+      "refused": true,
+      "refused_by": "llm",
+      "missing_facts": [],
+      "cited_file_ok": false,
+      "cited_section_ok": false,
+      "uncited": false,
+      "error": null,
+      "input_tokens": 1093,
+      "output_tokens": 75
+    }
+  ]
+}

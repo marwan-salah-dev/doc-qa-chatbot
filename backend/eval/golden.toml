@@ -1,0 +1,360 @@
+# Golden questions over the BrightSmile Dental demo files (backend/demo_data/).
+#
+# kind:     answerable | followup | unanswerable
+# style:    literal (reuses the documents' wording) | paraphrased (how a patient types: synonyms,
+#           casual phrasing, typos, no words from the expected section heading) | non-english
+# language: en (default) | ar | es | fr; non-english questions are retrieval-only and are left
+#           out of the RAG_MIN_SCORE calibration
+# facts:    regexes (case-insensitive) that must all appear in the answer
+# sources:  any one of these (file, section heading) is a correct retrieval or citation
+# topic:    unanswerable only: off (nothing to do with the clinic) | in-domain (about the clinic,
+#           but the documents don't say)
+# answer_eval: in the small subset the answer eval sends to the real LLM
+
+# --- answerable, literal ------------------------------------------------------------------
+
+[[question]]
+id = "hours-saturday"
+kind = "answerable"
+style = "literal"
+question = "What are your opening hours on Saturday?"
+facts = ['9(:00)?\s*am', '1(:00)?\s*pm']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "1. Opening hours" }]
+answer_eval = true
+
+[[question]]
+id = "cancel-fee"
+kind = "answerable"
+style = "literal"
+question = "How much is the late cancellation fee?"
+facts = ['\$40']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "2. Booking and cancellations" },
+  { file = "brightsmile-price-list.docx", section = "Payment and cancellation notes" },
+  { file = "brightsmile-faq.txt", section = "Can I cancel or move my appointment?" },
+]
+answer_eval = true
+
+[[question]]
+id = "insurers"
+kind = "answerable"
+style = "literal"
+question = "Which insurance companies are you in network with?"
+facts = ['Northwind', 'Harbor Mutual']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "3. Insurance" },
+  { file = "brightsmile-faq.txt", section = "Do you accept my insurance?" },
+]
+
+[[question]]
+id = "payment-methods"
+kind = "answerable"
+style = "literal"
+question = "What payment methods do you accept?"
+facts = ['cash', 'bank transfer']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "4. Payments and refunds" }]
+
+[[question]]
+id = "emergency-weekend"
+kind = "answerable"
+style = "literal"
+question = "Who do I call for a dental emergency at the weekend?"
+facts = ['555-0199']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "5. Dental emergencies" },
+  { file = "brightsmile-faq.txt", section = "I have toothache at the weekend. What should I do?" },
+]
+
+[[question]]
+id = "whitening-price"
+kind = "answerable"
+style = "literal"
+question = "How much does teeth whitening cost?"
+facts = ['\$350']
+sources = [
+  { file = "brightsmile-price-list.docx", section = "Treatments and prices" },
+  { file = "brightsmile-faq.txt", section = "How long does teeth whitening take?" },
+]
+
+[[question]]
+id = "first-visit"
+kind = "answerable"
+style = "literal"
+question = "What should I bring to my first visit?"
+facts = ['photo ID', 'insurance card']
+sources = [{ file = "brightsmile-faq.txt", section = "What should I bring to my first visit?" }]
+
+[[question]]
+id = "address"
+kind = "answerable"
+style = "literal"
+question = "Where is the clinic?"
+facts = ['48 Larkspur']
+sources = [
+  { file = "brightsmile-faq.txt", section = "Where is the clinic?" },
+  { file = "brightsmile-patient-handbook.pdf", section = "BrightSmile Dental Patient Handbook" },
+]
+
+# --- answerable, paraphrased --------------------------------------------------------------
+
+[[question]]
+id = "sunday"
+kind = "answerable"
+style = "paraphrased"
+question = "can i come in on a sunday?"
+facts = ['closed']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "1. Opening hours" }]
+
+[[question]]
+id = "missed-twice"
+kind = "answerable"
+style = "paraphrased"
+question = "what happens if i forget to show up twice in a year"
+facts = ['\$50']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "2. Booking and cancellations" }]
+
+[[question]]
+id = "estimate-time"
+kind = "answerable"
+style = "paraphrased"
+question = "my treatment is going to be pricey, how long till my health plan tells me what they'll pay?"
+facts = ['5 business days']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "3. Insurance" }]
+
+[[question]]
+id = "refund-time"
+kind = "answerable"
+style = "paraphrased"
+question = "i prepaid but need to call it off, when do i get my money back?"
+facts = ['10 business days']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "4. Payments and refunds" }]
+
+[[question]]
+id = "knocked-out"
+kind = "answerable"
+style = "paraphrased"
+question = "my son knocked his front tooth out playing football what do we do"
+facts = ['milk', '60 minutes']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "5. Dental emergencies" }]
+answer_eval = true
+
+[[question]]
+id = "straw"
+kind = "answerable"
+style = "paraphrased"
+question = "had a tooth pulled yesterday, can i drink thru a straw?"
+facts = ['72 hours']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "6. Aftercare" }]
+
+[[question]]
+id = "root-canal-price"
+kind = "answerable"
+style = "paraphrased"
+question = "how much for a root canal on a back tooth"
+facts = ['\$980']
+sources = [{ file = "brightsmile-price-list.docx", section = "Treatments and prices" }]
+answer_eval = true
+
+[[question]]
+id = "kid-age"
+kind = "answerable"
+style = "paraphrased"
+question = "from what age can my kid get seen? teh little one is 3"
+facts = ['\b2\b']
+sources = [{ file = "brightsmile-faq.txt", section = "Do you see children?" }]
+
+# --- follow-ups (retrieval uses `standalone`; the answer eval runs the real condense call) --
+
+[[question]]
+id = "implant-instalments"
+kind = "followup"
+style = "literal"
+history = [
+  { role = "user", content = "How much is a dental implant?" },
+  { role = "assistant", content = "A dental implant, including the crown, costs $2,400." },
+]
+question = "Can I pay for it in instalments?"
+standalone = "Can I pay for a dental implant in instalments?"
+facts = ['\$200', '12']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "4. Payments and refunds" },
+  { file = "brightsmile-price-list.docx", section = "Payment and cancellation notes" },
+  { file = "brightsmile-faq.txt", section = "Do you offer payment plans?" },
+]
+answer_eval = true
+
+[[question]]
+id = "friday-last-appointment"
+kind = "followup"
+style = "literal"
+history = [
+  { role = "user", content = "What are your opening hours on Friday?" },
+  { role = "assistant", content = "On Friday the clinic is open from 8:00 am to 4:00 pm." },
+]
+question = "And when is the last appointment that day?"
+standalone = "When does the last appointment start on Friday?"
+facts = ['3:30|30 minutes']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "1. Opening hours" }]
+
+[[question]]
+id = "checkup-how-often"
+kind = "followup"
+style = "literal"
+history = [
+  { role = "user", content = "How much is a check-up and clean?" },
+  { role = "assistant", content = "A check-up and clean costs $95." },
+]
+question = "How often should I get one?"
+standalone = "How often should I get a check-up and clean?"
+facts = ['6 months']
+sources = [
+  { file = "brightsmile-faq.txt", section = "How much is a check-up and clean?" },
+  { file = "brightsmile-price-list.docx", section = "Treatments and prices" },
+]
+
+[[question]]
+id = "whitening-duration"
+kind = "followup"
+style = "literal"
+history = [
+  { role = "user", content = "What should I avoid after teeth whitening?" },
+  { role = "assistant", content = "Avoid coffee, tea, red wine and other strongly coloured food and drink for 48 hours." },
+]
+question = "How long does the appointment itself take?"
+standalone = "How long does a teeth whitening appointment take?"
+facts = ['90']
+sources = [
+  { file = "brightsmile-price-list.docx", section = "Treatments and prices" },
+  { file = "brightsmile-faq.txt", section = "How long does teeth whitening take?" },
+]
+
+# --- unanswerable: must be refused --------------------------------------------------------
+
+[[question]]
+id = "weather"
+kind = "unanswerable"
+style = "literal"
+topic = "off"
+question = "What's the weather going to be like in Paris tomorrow?"
+answer_eval = true
+
+[[question]]
+id = "poem"
+kind = "unanswerable"
+style = "literal"
+topic = "off"
+question = "Write me a short poem about the sea."
+
+[[question]]
+id = "world-cup"
+kind = "unanswerable"
+style = "literal"
+topic = "off"
+question = "Who won the 2022 FIFA World Cup?"
+
+[[question]]
+id = "iphone-reset"
+kind = "unanswerable"
+style = "literal"
+topic = "off"
+question = "How do I reset my iPhone to factory settings?"
+
+[[question]]
+id = "parking"
+kind = "unanswerable"
+style = "literal"
+topic = "in-domain"
+question = "Is there parking at the clinic?"
+answer_eval = true
+
+[[question]]
+id = "braces"
+kind = "unanswerable"
+style = "literal"
+topic = "in-domain"
+question = "Do you do braces or Invisalign?"
+
+[[question]]
+id = "sedation"
+kind = "unanswerable"
+style = "paraphrased"
+topic = "in-domain"
+question = "Can I be sedated if I'm really nervous about treatment?"
+answer_eval = true
+
+[[question]]
+id = "head-dentist"
+kind = "unanswerable"
+style = "literal"
+topic = "in-domain"
+question = "What's the name of the head dentist?"
+
+# --- non-English versions of answerable questions (retrieval only, not calibrated) --------
+
+[[question]]
+id = "ar-hours-saturday"
+kind = "answerable"
+style = "non-english"
+language = "ar"
+question = "ما هي مواعيد العمل يوم السبت؟"
+facts = ['9(:00)?\s*am', '1(:00)?\s*pm']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "1. Opening hours" }]
+
+[[question]]
+id = "ar-cancel-fee"
+kind = "answerable"
+style = "non-english"
+language = "ar"
+question = "كم رسوم إلغاء الموعد في وقت متأخر؟"
+facts = ['\$40']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "2. Booking and cancellations" },
+  { file = "brightsmile-price-list.docx", section = "Payment and cancellation notes" },
+  { file = "brightsmile-faq.txt", section = "Can I cancel or move my appointment?" },
+]
+
+[[question]]
+id = "es-whitening-price"
+kind = "answerable"
+style = "non-english"
+language = "es"
+question = "¿Cuánto cuesta el blanqueamiento dental?"
+facts = ['\$350']
+sources = [
+  { file = "brightsmile-price-list.docx", section = "Treatments and prices" },
+  { file = "brightsmile-faq.txt", section = "How long does teeth whitening take?" },
+]
+
+[[question]]
+id = "es-emergency-weekend"
+kind = "answerable"
+style = "non-english"
+language = "es"
+question = "¿A quién llamo si tengo una urgencia dental el fin de semana?"
+facts = ['555-0199']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "5. Dental emergencies" },
+  { file = "brightsmile-faq.txt", section = "I have toothache at the weekend. What should I do?" },
+]
+
+[[question]]
+id = "fr-cancel-fee"
+kind = "answerable"
+style = "non-english"
+language = "fr"
+question = "Combien coûte une annulation de rendez-vous tardive ?"
+facts = ['\$40']
+sources = [
+  { file = "brightsmile-patient-handbook.pdf", section = "2. Booking and cancellations" },
+  { file = "brightsmile-price-list.docx", section = "Payment and cancellation notes" },
+  { file = "brightsmile-faq.txt", section = "Can I cancel or move my appointment?" },
+]
+
+[[question]]
+id = "fr-knocked-out"
+kind = "answerable"
+style = "non-english"
+language = "fr"
+question = "Une dent de mon fils est tombée après un choc au foot, que faire ?"
+facts = ['milk', '60 minutes']
+sources = [{ file = "brightsmile-patient-handbook.pdf", section = "5. Dental emergencies" }]

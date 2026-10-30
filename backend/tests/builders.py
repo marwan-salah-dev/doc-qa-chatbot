@@ -9,8 +9,10 @@ from pypdf import PdfReader, PdfWriter
 def build_pdf(page_streams: list[bytes], *, image: bool = False) -> bytes:
     """Hand-build a minimal valid PDF with one content stream per page."""
     n = len(page_streams)
-    # Objects: 1 catalog, 2 pages, 3 font, 4 image, then a (page, content) pair per page.
+    # Objects: 1 catalog, 2 pages, 3 font, 4 image, then a (page, content) pair per page, then
+    # the bold font.
     kids = " ".join(f"{5 + 2 * i} 0 R" for i in range(n))
+    bold = 5 + 2 * n
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         f"<< /Type /Pages /Kids [{kids}] /Count {n} >>".encode(),
@@ -18,7 +20,9 @@ def build_pdf(page_streams: list[bytes], *, image: bool = False) -> bytes:
         b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray "
         b"/BitsPerComponent 8 /Length 1 >>\nstream\n\x80\nendstream",
     ]
-    resources = "/Font << /F1 3 0 R >>" + (" /XObject << /Im0 4 0 R >>" if image else "")
+    resources = f"/Font << /F1 3 0 R /F2 {bold} 0 R >>" + (
+        " /XObject << /Im0 4 0 R >>" if image else ""
+    )
     for i, stream in enumerate(page_streams):
         objects.append(
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents {6 + 2 * i} 0 R "
@@ -27,6 +31,7 @@ def build_pdf(page_streams: list[bytes], *, image: bool = False) -> bytes:
         objects.append(
             b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
         )
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
 
     out = bytearray(b"%PDF-1.4\n")
     offsets = []
@@ -45,14 +50,22 @@ def make_pdf(pages: list[str]) -> bytes:
     return build_pdf(streams)
 
 
-def make_sized_pdf(pages: list[list[tuple[str, float]]]) -> bytes:
-    """One line per (text, font size), top to bottom, so headings can be set in a larger font."""
+Run = tuple[str, float] | tuple[str, float, bool]
+
+
+def make_sized_pdf(pages: list[list[Run | list[Run]]]) -> bytes:
+    """One line per (text, font size[, bold]), top to bottom, so headings can be set in a larger
+    or a bold font. A list of runs is one line written in several runs."""
     streams = []
     for lines in pages:
-        ops = [
-            f"BT /F1 {size} Tf 72 {720 - 24 * row} Td ({text}) Tj ET"
-            for row, (text, size) in enumerate(lines)
-        ]
+        ops = []
+        for row, line in enumerate(lines):
+            runs = line if isinstance(line, list) else [line]
+            shows = " ".join(
+                f"/F{2 if len(run) == 3 and run[2] else 1} {run[1]} Tf ({run[0]}) Tj"
+                for run in runs
+            )
+            ops.append(f"BT 72 {720 - 24 * row} Td {shows} ET")
         streams.append("\n".join(ops).encode())
     return build_pdf(streams)
 

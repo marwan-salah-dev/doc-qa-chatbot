@@ -2,7 +2,7 @@
 
 An AI support agent that answers customer questions **only from a business's own documents**, with citations to the exact source file and page.
 
-> Status: Stage 1 in progress. Live demo, screenshots and evaluation results are coming soon.
+> Status: Stage 1 in progress. Live demo and screenshots are coming soon; see [Quality](#quality) for evaluation results.
 
 ## Features (Stage 1)
 
@@ -13,6 +13,33 @@ An AI support agent that answers customer questions **only from a business's own
 - Switch between Anthropic and OpenAI models with one environment variable
 
 **Planned for Stage 2:** tool calling (book appointments, create support tickets) and an embeddable chat widget for any website.
+
+## Quality
+
+An eval over the demo clinic's three documents (PDF handbook, DOCX price list, TXT FAQ) with 34 golden questions in [`backend/eval/golden.toml`](backend/eval/golden.toml). The questions are answerable (half paraphrased the way patients type, with synonyms and typos), follow-ups, unanswerable (off-topic, and clinic questions the documents don't cover) and Arabic, Spanish and French. Scoring uses plain checks, not an LLM judge. Each run is saved in `backend/eval/results/` and compared with the previous one.
+
+```bash
+cd backend
+uv run python -m eval.retrieval      # free: no LLM calls
+uv run python -m eval.answers        # token estimate only
+uv run python -m eval.answers --run  # real LLM, small subset, 60 s apart for Groq's free tier
+```
+
+**Retrieval** (bge-small, 21 chunks; hit@k = the right section is in the top k):
+
+| Questions | n | hit@1 | hit@3 | hit@6 |
+| --- | --- | --- | --- | --- |
+| English, literal wording | 8 | 88% | 100% | 100% |
+| English, paraphrased | 8 | 50% | 88% | 100% |
+| Follow-ups, condensed | 4 | 100% | 100% | 100% |
+| Follow-ups, as typed | 4 | 75% | 75% | 100% |
+| Arabic / Spanish / French | 2 each | 0% | 50% | 50% / 100% / 50% |
+
+**Answers** (gpt-oss-120b on Groq, 8 questions, 9,185 tokens): 5/5 answerable questions correct with the expected fact and a citation to the right section, 3/3 unanswerable ones refused, and no uncited answers.
+
+**Refusal threshold.** `RAG_MIN_SCORE` stays at 0.45. English answerable questions score at least 0.559 and off-topic ones at most 0.461, so 0.51 would split that gap. But the off-topic side rests on only 4 questions, and 0.51 would refuse 4 of 6 non-English questions before the LLM sees them (2 of those had the right section retrieved). An off-topic question that gets past 0.45 costs one LLM call, and the model still refuses it: in the run above, the weather question did exactly that. Clinic questions the documents don't cover (parking scores 0.687) can't be stopped by any threshold, so the model's refusal rule handles them.
+
+**Known gap: non-English questions.** The default local embedder is English-only. The cheapest fix is `EMBEDDING_PROVIDER=openai`, which is already supported. `intfloat/multilingual-e5-small` (MIT) would run locally, but it roughly doubles the backend's memory, and every workspace would have to be re-indexed and the threshold re-checked.
 
 ## Tech stack
 

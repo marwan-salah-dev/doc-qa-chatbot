@@ -58,6 +58,82 @@ def test_pdf_with_one_font_size_is_a_single_section():
     assert all(s.location.heading is None for s in segments)
 
 
+BODY = 11.0
+
+
+def test_pdf_splits_at_bold_headings_set_at_the_body_size():
+    data = make_sized_pdf(
+        [
+            [
+                ("Refunds", BODY, True),
+                ("We refund within 5 days.", BODY),
+                ("Shipping", BODY, True),
+                ("We ship worldwide.", BODY),
+            ]
+        ]
+    )
+
+    segments = parse_document("a.pdf", data)
+
+    assert [(s.text, s.location.heading) for s in segments] == [
+        ("Refunds\nWe refund within 5 days.", "Refunds"),
+        ("Shipping\nWe ship worldwide.", "Shipping"),
+    ]
+    assert len({s.section for s in segments}) == 2
+
+
+def test_a_fully_bold_pdf_has_no_bold_headings():
+    data = make_sized_pdf([[("Refunds", BODY, True), ("We refund within 5 days", BODY, True)]])
+
+    assert {s.section for s in parse_document("a.pdf", data)} == {0}
+
+
+def test_a_line_only_partly_bold_is_not_a_heading():
+    data = make_sized_pdf(
+        [[("Intro text", BODY), [("Note:", BODY, True), (" refunds take 5 days", BODY)]]]
+    )
+
+    assert {s.section for s in parse_document("a.pdf", data)} == {0}
+
+
+def test_a_bold_sentence_is_not_a_heading():
+    data = make_sized_pdf(
+        [[("Intro text", BODY), ("Refunds are final.", BODY, True), ("More text", BODY)]]
+    )
+
+    assert {s.section for s in parse_document("a.pdf", data)} == {0}
+
+
+def test_reportlab_handbook_with_bold_body_size_headings_chunks_by_section():
+    """Like the demo handbook, but every heading is Helvetica-Bold at the body's 10.5 pt, as in
+    many real client PDFs. Without bold detection it falls back to token windows."""
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate
+
+    from app.services.chunking import chunk_segments
+    from scripts import demo_content as content
+
+    body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10.5, leading=15)
+    heading = ParagraphStyle("Heading", parent=body, fontName="Helvetica-Bold", spaceBefore=12)
+    story: list[Flowable] = [
+        Paragraph(content.HANDBOOK_TITLE, heading),
+        Paragraph(content.HANDBOOK_INTRO, body),
+    ]
+    for section, paragraphs in content.HANDBOOK_SECTIONS:
+        story.append(Paragraph(section, heading))
+        story += [Paragraph(text.removeprefix("- "), body) for text in paragraphs]
+    buffer = BytesIO()
+    SimpleDocTemplate(buffer, pagesize=LETTER, invariant=1).build(story)
+
+    chunks = chunk_segments(parse_document("handbook.pdf", buffer.getvalue()))
+
+    assert [chunk.location.heading for chunk in chunks] == [
+        content.HANDBOOK_TITLE,
+        *[section for section, _ in content.HANDBOOK_SECTIONS],
+    ]
+
+
 def test_image_only_pdf_gives_no_text_error():
     with pytest.raises(ParseError, match="No text found"):
         parse_document("scan.pdf", make_image_only_pdf())

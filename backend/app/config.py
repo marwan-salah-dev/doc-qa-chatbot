@@ -36,7 +36,11 @@ class Settings(BaseSettings):
 
     # Answering (RAG)
     rag_top_k: int = Field(default=6, gt=0)
-    # Errs low: the LLM's NOT_FOUND instruction is the backstop for anything that slips through
+    # Errs low on purpose (eval/retrieval.py, bge-small, 2026-10-30): English answerable questions
+    # score >= 0.559 and off-topic ones <= 0.461, so 0.51 would be the midpoint, but that margin
+    # rests on only 4 off-topic questions, and 0.51 refuses 4 of 6 Arabic/French/Spanish
+    # questions (2 of them had the right section retrieved) before the LLM sees them. At 0.45 an
+    # off-topic question that slips through costs one LLM call, and the LLM still refuses it.
     rag_min_score: float = Field(default=0.45, ge=0, le=1)
     rag_token_budget: int = Field(default=5500, gt=0)
     rag_history_tokens: int = Field(default=1000, ge=0)
