@@ -10,10 +10,10 @@ An AI support agent that answers customer questions **only from a business's own
 
 <!-- Replace each placeholder with an image (docs/screenshots/*.png) or GIF. -->
 
-| | |
-| --- | --- |
-| ![Chat](docs/screenshots/chat.png) <br> *TODO: a streamed answer with citation chips and the source list.* | ![Citation preview](docs/screenshots/citation-preview.png) <br> *TODO: the side panel open on a PDF page with the cited passage highlighted.* |
-| ![Refusal](docs/screenshots/refusal.png) <br> *TODO: a question the documents can't answer, showing the "not found" reply.* | ![Mobile](docs/screenshots/mobile.png) <br> *TODO: the layout on a 375 px phone.* |
+|                                                                                                                             |                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Chat](docs/screenshots/chat.png) <br> _TODO: a streamed answer with citation chips and the source list._                  | ![Citation preview](docs/screenshots/citation-preview.png) <br> _TODO: the side panel open on a PDF page with the cited passage highlighted._ |
+| ![Refusal](docs/screenshots/refusal.png) <br> _TODO: a question the documents can't answer, showing the "not found" reply._ | ![Mobile](docs/screenshots/mobile.png) <br> _TODO: the layout on a 375 px phone._                                                             |
 
 <!-- Demo GIF (60-90 s, script in docs/DEMO.md): ![Demo](docs/screenshots/demo.gif) -->
 
@@ -45,7 +45,7 @@ flowchart LR
 How a document becomes an answer:
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Upload
         direction LR
         U1["PDF / DOCX / TXT"] --> U2[Parse] --> U3["Section-aware chunks"] --> U4[Embed] --> U5["Store in Chroma"]
@@ -56,20 +56,21 @@ flowchart LR
         Q3 -->|no| Q4["Refuse, no LLM call"]
         Q3 -->|yes| Q5["LLM answers with numbered sources"] --> Q6["Keep only cited sources"]
     end
+    U5 -. searched by .-> Q2
 ```
 
 ## Key engineering decisions
 
-| Decision | Why |
-| --- | --- |
-| **Section-aware chunking**: a heading's section stays in one chunk and is split into token windows only when too long | Answers and citations land on a whole policy or price table, not half of one |
-| **Citations**: sources are numbered `[n]` in the prompt, only cited ones come back, and they are renumbered 1, 2, 3 by first use | Every claim can be checked against the exact place it came from, and invented citations are dropped |
-| **Similarity threshold plus an LLM refusal rule** (`RAG_MIN_SCORE`) | Off-topic questions cost no LLM call, and the model's rule catches in-domain questions the documents don't cover |
-| **Visitor ownership without login** (`X-Visitor-Id`, stored only as a SHA-256; other people's items return 404) | A public demo where visitors can't see each other's uploads, with no sign-up friction (`PUBLIC_DEMO=true` only) |
-| **In-process rate limits and a daily token cap** instead of a rate-limit library | One worker means in-memory is correct, it avoids extra dependencies, and the cap keeps a free-tier key from being drained (`PUBLIC_DEMO=true` only) |
-| **CPU-only Docker for a 2 GB VPS**: CPU torch, the model baked into the image, one uvicorn worker, embedded Chroma | No multi-GB GPU packages, no model download at start-up, and two containers that fit in 2 GB |
-| **Provider interfaces with fake implementations** | The whole test suite runs without API keys or network, so CI needs no secrets |
-| **pypdf instead of PyMuPDF** | BSD-licensed, so clients can reuse the code without AGPL obligations |
+| Decision                                                                                                                         | Why                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Section-aware chunking**: a heading's section stays in one chunk and is split into token windows only when too long            | Answers and citations land on a whole policy or price table, not half of one                                                                        |
+| **Citations**: sources are numbered `[n]` in the prompt, only cited ones come back, and they are renumbered 1, 2, 3 by first use | Every claim can be checked against the exact place it came from, and invented citations are dropped                                                 |
+| **Similarity threshold plus an LLM refusal rule** (`RAG_MIN_SCORE`)                                                              | Off-topic questions cost no LLM call, and the model's rule catches in-domain questions the documents don't cover                                    |
+| **Visitor ownership without login** (`X-Visitor-Id`, stored only as a SHA-256; other people's items return 404)                  | A public demo where visitors can't see each other's uploads, with no sign-up friction (`PUBLIC_DEMO=true` only)                                     |
+| **In-process rate limits and a daily token cap** instead of a rate-limit library                                                 | One worker means in-memory is correct, it avoids extra dependencies, and the cap keeps a free-tier key from being drained (`PUBLIC_DEMO=true` only) |
+| **CPU-only Docker for a 2 GB VPS**: CPU torch, the model baked into the image, one uvicorn worker, embedded Chroma               | No multi-GB GPU packages, no model download at start-up, and two containers that fit in 2 GB                                                        |
+| **Provider interfaces with fake implementations**                                                                                | The whole test suite runs without API keys or network, so CI needs no secrets                                                                       |
+| **pypdf instead of PyMuPDF**                                                                                                     | BSD-licensed, so clients can reuse the code without AGPL obligations                                                                                |
 
 ## Quality
 
@@ -84,13 +85,13 @@ uv run python -m eval.answers --run  # real LLM, small subset, 60 s apart for Gr
 
 **Retrieval** (bge-small, 21 chunks; hit@k = the right section is in the top k):
 
-| Questions | n | hit@1 | hit@3 | hit@6 |
-| --- | --- | --- | --- | --- |
-| English, literal wording | 8 | 88% | 100% | 100% |
-| English, paraphrased | 8 | 50% | 88% | 100% |
-| Follow-ups, condensed | 4 | 100% | 100% | 100% |
-| Follow-ups, as typed | 4 | 75% | 75% | 100% |
-| Arabic / Spanish / French | 2 each | 0% | 50% | 50% / 100% / 50% |
+| Questions                 | n      | hit@1 | hit@3 | hit@6            |
+| ------------------------- | ------ | ----- | ----- | ---------------- |
+| English, literal wording  | 8      | 88%   | 100%  | 100%             |
+| English, paraphrased      | 8      | 50%   | 88%   | 100%             |
+| Follow-ups, condensed     | 4      | 100%  | 100%  | 100%             |
+| Follow-ups, as typed      | 4      | 75%   | 75%   | 100%             |
+| Arabic / Spanish / French | 2 each | 0%    | 50%   | 50% / 100% / 50% |
 
 **Answers** (gpt-oss-120b on Groq, 8 questions, 9,185 tokens): 5/5 answerable questions correct with the expected fact and a citation to the right section, 3/3 unanswerable ones refused, and no uncited answers.
 
@@ -175,16 +176,16 @@ Every limit is set in `backend/.env.example`, and 0 turns one off.
 
 Everything is configured with environment variables in `backend/.env` (copy `backend/.env.example`, which documents every setting). The main ones:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` (also any OpenAI-compatible API through `OPENAI_BASE_URL`, such as Groq) |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | empty | Only the selected provider's key is required |
-| `EMBEDDING_PROVIDER` | `local` | `local` (bge-small on CPU, free) or `openai` (low memory) |
-| `RAG_MIN_SCORE` | `0.45` | Similarity a chunk needs to count as relevant; below it the app refuses without calling the LLM |
-| `MAX_UPLOAD_MB` | `20` | Largest accepted upload (the reverse proxy should enforce it too) |
-| `PUBLIC_DEMO` | `false` | Turns on visitor ownership, the read-only demo workspace, expiry, rate limits and the token cap |
-| `ADMIN_API_KEY` | empty | Needed to seed the read-only demo workspace in public-demo mode |
-| `DAILY_TOKEN_CAP` | `150000` | Most LLM tokens per UTC day in public-demo mode |
+| Variable                               | Default     | Purpose                                                                                          |
+| -------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `LLM_PROVIDER`                         | `anthropic` | `anthropic` or `openai` (also any OpenAI-compatible API through `OPENAI_BASE_URL`, such as Groq) |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | empty       | Only the selected provider's key is required                                                     |
+| `EMBEDDING_PROVIDER`                   | `local`     | `local` (bge-small on CPU, free) or `openai` (low memory)                                        |
+| `RAG_MIN_SCORE`                        | `0.45`      | Similarity a chunk needs to count as relevant; below it the app refuses without calling the LLM  |
+| `MAX_UPLOAD_MB`                        | `20`        | Largest accepted upload (the reverse proxy should enforce it too)                                |
+| `PUBLIC_DEMO`                          | `false`     | Turns on visitor ownership, the read-only demo workspace, expiry, rate limits and the token cap  |
+| `ADMIN_API_KEY`                        | empty       | Needed to seed the read-only demo workspace in public-demo mode                                  |
+| `DAILY_TOKEN_CAP`                      | `150000`    | Most LLM tokens per UTC day in public-demo mode                                                  |
 
 The frontend needs no configuration in development (`frontend/.env.example` explains `VITE_API_BASE_URL`).
 
@@ -198,14 +199,14 @@ The frontend needs no configuration in development (`frontend/.env.example` expl
 
 ## Tech stack
 
-| Layer | Choice |
-| --- | --- |
-| API | Python 3.12, FastAPI |
-| Retrieval | ChromaDB, sentence-transformers or OpenAI embeddings |
-| LLM | Anthropic or OpenAI-compatible (`LLM_PROVIDER`) |
-| Frontend | React, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query |
-| Tests and CI | pytest, Vitest, ruff, pyright, ESLint, GitHub Actions |
-| Deploy | Docker Compose |
+| Layer        | Choice                                                           |
+| ------------ | ---------------------------------------------------------------- |
+| API          | Python 3.12, FastAPI                                             |
+| Retrieval    | ChromaDB, sentence-transformers or OpenAI embeddings             |
+| LLM          | Anthropic or OpenAI-compatible (`LLM_PROVIDER`)                  |
+| Frontend     | React, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query |
+| Tests and CI | pytest, Vitest, ruff, pyright, ESLint, GitHub Actions            |
+| Deploy       | Docker Compose                                                   |
 
 ## Project layout
 
