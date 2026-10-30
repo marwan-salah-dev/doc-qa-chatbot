@@ -187,6 +187,75 @@ def test_chunk_is_immutable_value():
         chunk.text = "changed"  # type: ignore[misc]
 
 
+# --- sections: chunks follow the document's structure before falling back to token windows ---
+
+
+def faq_seg(text: str, line: int, question: str | None, section: int) -> Segment:
+    return Segment(text, Location(kind="txt", heading=question, start=line, end=line), section)
+
+
+def test_each_short_section_is_its_own_chunk_with_a_tight_location():
+    segs = [
+        faq_seg("Clinic FAQ", 1, None, 0),
+        faq_seg("Q: Open on Sundays?", 3, "Open on Sundays?", 1),
+        faq_seg("A: No.", 4, "Open on Sundays?", 1),
+        faq_seg("Q: Take cards?", 6, "Take cards?", 2),
+        faq_seg("A: Yes.", 7, "Take cards?", 2),
+    ]
+
+    chunks = chunk_segments(segs, max_tokens=350)
+
+    assert [c.text for c in chunks] == [
+        "Clinic FAQ",
+        "Q: Open on Sundays?\nA: No.",
+        "Q: Take cards?\nA: Yes.",
+    ]
+    assert [c.location.label() for c in chunks] == [
+        "line 1",
+        "Open on Sundays? · lines 3-4",
+        "Take cards? · lines 6-7",
+    ]
+    assert [c.index for c in chunks] == [0, 1, 2]
+
+
+def test_a_pdf_section_over_a_page_break_names_its_heading_and_both_pages():
+    segs = [
+        Segment("Intro text", Location("pdf", page=1), 0),
+        Segment("Refunds\nWithin 5 days.", Location("pdf", page=1, heading="Refunds"), 1),
+        Segment("Card refunds too.", Location("pdf", page=2, heading="Refunds"), 1),
+        Segment("Shipping\nWe ship.", Location("pdf", page=2, heading="Shipping"), 2),
+    ]
+
+    chunks = chunk_segments(segs, max_tokens=350)
+
+    assert [c.location.label() for c in chunks] == [
+        "page 1",
+        "Refunds · pages 1-2",
+        "Shipping · page 2",
+    ]
+
+
+def test_an_oversized_section_falls_back_to_token_windows_that_stay_inside_it():
+    segs = [
+        docx_seg("Short", 1, "Intro"),
+        Segment(words(150, "a"), Location("docx", heading="Prices", start=2, end=2), 1),
+        Segment(words(150, "b"), Location("docx", heading="Prices", start=3, end=3), 1),
+        Segment("Closing note", Location("docx", heading="Notes", start=4, end=4), 2),
+    ]
+
+    chunks = chunk_segments(segs, max_tokens=100, overlap_tokens=10)
+
+    assert chunks[0].text == "Short"
+    assert chunks[-1].text == "Closing note"
+    middle = chunks[1:-1]
+    assert len(middle) > 1
+    assert all(c.location.heading == "Prices" for c in middle)
+    # No window reaches back into the previous section or on into the next one
+    assert all("Short" not in c.text and "Closing" not in c.text for c in middle)
+    assert middle[0].location.start == 2 and middle[-1].location.end == 3
+    assert [c.index for c in chunks] == list(range(len(chunks)))
+
+
 @pytest.mark.parametrize(("max_tokens", "overlap"), [(0, 0), (10, 10), (10, 11), (10, -1)])
 def test_invalid_sizes_are_rejected(max_tokens: int, overlap: int):
     with pytest.raises(ValueError):

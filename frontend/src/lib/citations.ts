@@ -1,3 +1,5 @@
+import type { Citation } from '@/api/types'
+
 /** `[1]`, `[1, 3]` and gpt-oss's `[1†source]`; `[1][3]` is two matches. Mirrors `_MARKER` in
  * backend/app/services/rag.py, so the UI links exactly the markers the backend counts. */
 const MARKER = /\[(\d+(?:\s*,\s*\d+)*)(?:†[^\]\n]*)?\]/g
@@ -36,6 +38,25 @@ export function splitCitations(text: string, known: ReadonlySet<number>): (strin
   plain += text.slice(last)
   if (plain) parts.push(plain)
   return parts
+}
+
+/** The sources an answer cites, numbered 1, 2, 3 in the order the text first cites them, so an
+ * answer never shows [1] and [3] without [2]. Keyed by the number in the text (what the model
+ * wrote and what is saved); each value is the source with `number` set to the one to display.
+ * Map order is first-use order. Worked out on every render, so live and saved answers match. */
+export function numberCitationsByFirstUse(
+  text: string,
+  citations: readonly Citation[],
+): Map<number, Citation> {
+  const byNumber = new Map(citations.map((c) => [c.number, c]))
+  const numbered = new Map<number, Citation>()
+  for (const part of splitCitations(text, new Set(byNumber.keys()))) {
+    const citation = typeof part === 'number' ? byNumber.get(part) : undefined
+    if (citation && !numbered.has(citation.number)) {
+      numbered.set(citation.number, { ...citation, number: numbered.size + 1 })
+    }
+  }
+  return numbered
 }
 
 /** The few mdast fields this plugin touches (avoids depending on @types/mdast directly). */

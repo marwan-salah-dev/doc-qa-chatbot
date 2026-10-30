@@ -7,7 +7,7 @@ import { LogoMark } from '@/components/LogoMark'
 import { Markdown } from '@/components/Markdown'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { splitCitations } from '@/lib/citations'
+import { numberCitationsByFirstUse } from '@/lib/citations'
 
 export function UserMessage({ content }: { content: string }) {
   return (
@@ -89,8 +89,9 @@ export function AssistantMessage({
     )
   }
 
-  // Sources in the order the answer first cites them; while streaming only those cited so far
-  const cited = citedInOrder(content, citations)
+  // Sources in the order the answer first cites them, numbered 1, 2, 3 like the inline chips;
+  // while streaming only those cited so far
+  const cited = [...numberCitationsByFirstUse(content, citations).values()]
 
   return (
     <AgentRow>
@@ -133,12 +134,4 @@ export function AssistantMessage({
       </div>
     </AgentRow>
   )
-}
-
-function citedInOrder(content: string, citations: Citation[]): Citation[] {
-  const byNumber = new Map(citations.map((c) => [c.number, c]))
-  const numbers = splitCitations(content, new Set(byNumber.keys())).filter(
-    (part) => typeof part === 'number',
-  )
-  return [...new Set(numbers)].map((n) => byNumber.get(n)).filter((c) => c !== undefined)
 }

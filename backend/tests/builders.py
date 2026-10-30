@@ -45,6 +45,18 @@ def make_pdf(pages: list[str]) -> bytes:
     return build_pdf(streams)
 
 
+def make_sized_pdf(pages: list[list[tuple[str, float]]]) -> bytes:
+    """One line per (text, font size), top to bottom, so headings can be set in a larger font."""
+    streams = []
+    for lines in pages:
+        ops = [
+            f"BT /F1 {size} Tf 72 {720 - 24 * row} Td ({text}) Tj ET"
+            for row, (text, size) in enumerate(lines)
+        ]
+        streams.append("\n".join(ops).encode())
+    return build_pdf(streams)
+
+
 def make_image_only_pdf() -> bytes:
     return build_pdf([b"q 200 0 0 200 100 100 cm /Im0 Do Q"], image=True)
 

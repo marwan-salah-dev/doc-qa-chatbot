@@ -1,3 +1,4 @@
+import itertools
 import math
 import re
 from collections.abc import Callable
@@ -45,7 +46,8 @@ def _merge_locations(locations: list[Location]) -> Location:
     if first.kind == "pdf":
         pages = [p for loc in locations if (p := loc.page) is not None]
         low, high = min(pages), max(pages)
-        return Location(kind="pdf", page=low, page_end=high if high != low else None)
+        page_end = high if high != low else None
+        return Location(kind="pdf", page=low, page_end=page_end, heading=first.heading)
     starts = [s for loc in locations if (s := loc.start) is not None]
     ends = [e for loc in locations if (e := loc.end) is not None]
     return Location(kind=first.kind, heading=first.heading, start=min(starts), end=max(ends))
@@ -57,12 +59,16 @@ def chunk_segments(
     overlap_tokens: int = DEFAULT_OVERLAP_TOKENS,
     count_tokens: TokenCounter = estimate_tokens,
 ) -> list[Chunk]:
-    """Merge located segments into overlapping chunks of at most `max_tokens`, as measured by
-    `count_tokens` (pass the embedder's own counter so the limit is real, not estimated).
+    """Turn located segments into chunks of at most `max_tokens`, as measured by `count_tokens`
+    (pass the embedder's own counter so the limit is real, not estimated).
 
-    A chunk's location covers every segment it touches: a page range for PDFs, a paragraph or
-    line range for DOCX and TXT (with the heading in force where the chunk starts). Consecutive
-    chunks share about `overlap_tokens` so an answer split across a boundary is still found.
+    Structure comes first: each section (consecutive segments with the same `section`, such as
+    a heading and its paragraphs, or an FAQ question and its answer) becomes one chunk when it
+    fits. Only a section over the limit is split into token windows, which stay inside it and
+    share about `overlap_tokens` so an answer split across a window boundary is still found.
+
+    A chunk's location covers just the segments it holds, under its section's heading: a page
+    range for PDFs, a paragraph range for DOCX and a line range for TXT.
 
     No chunk is ever emitted over the limit: a word too long to fit is split into pieces, and
     any chunk that the word-by-word budget let through but the counter rejects is cut down.
@@ -81,9 +87,34 @@ def chunk_segments(
             f"token counter overhead ({overhead}) leaves no room within max_tokens={max_tokens}"
         )
 
+    pieces: list[tuple[str, Location]] = []
+    for _section, group in itertools.groupby(segments, key=lambda s: s.section):
+        filled = [s for s in group if s.text.strip()]
+        if not filled:
+            continue
+        text = "\n".join(s.text.strip() for s in filled)
+        if count_tokens(text) <= max_tokens:
+            pieces.append((text, _merge_locations([s.location for s in filled])))
+        else:
+            pieces += _token_windows(filled, max_tokens, overlap_tokens, count_tokens, overhead)
+    return [
+        Chunk(text=text, location=location, index=index)
+        for index, (text, location) in enumerate(pieces)
+    ]
+
+
+def _token_windows(
+    segments: list[Segment],
+    max_tokens: int,
+    overlap_tokens: int,
+    count_tokens: TokenCounter,
+    overhead: int,
+) -> list[tuple[str, Location]]:
+    """Overlapping windows of whole words over segments too long to be one chunk."""
+    budget = max_tokens - overhead
     units = _split_into_units(segments, count_tokens, overhead, budget)
 
-    chunks: list[Chunk] = []
+    chunks: list[tuple[str, Location]] = []
     begin = 0
     while begin < len(units):
         end, total = begin, 0
@@ -91,7 +122,7 @@ def chunk_segments(
             total += units[end].tokens
             end += 1
         end, text, location = _fit_window(segments, units, begin, end, max_tokens, count_tokens)
-        chunks.append(Chunk(text=text, location=location, index=len(chunks)))
+        chunks.append((text, location))
         if end == len(units):
             break
         # Step back from the end to carry the overlap, always moving forward overall.

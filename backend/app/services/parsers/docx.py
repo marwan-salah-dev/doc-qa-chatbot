@@ -19,7 +19,8 @@ def parse_docx(data: bytes) -> list[Segment]:
     """One segment per non-empty paragraph or table row, tagged with the nearest heading.
 
     Headings are tracked as context and also emitted as segments, so a question about a
-    heading's wording can still match.
+    heading's wording can still match. Each heading opens a new section, which takes in the
+    paragraphs and table rows under it.
     """
     try:
         doc = Document(BytesIO(data))
@@ -29,12 +30,14 @@ def parse_docx(data: bytes) -> list[Segment]:
 
     segments: list[Segment] = []
     heading: str | None = None
+    section = 0
     count = 0
 
     def add(text: str) -> None:
         nonlocal count
         count += 1
-        segments.append(Segment(text, Location("docx", heading=heading, start=count, end=count)))
+        location = Location("docx", heading=heading, start=count, end=count)
+        segments.append(Segment(text, location, section))
 
     for block in blocks:
         if isinstance(block, Paragraph):
@@ -43,6 +46,7 @@ def parse_docx(data: bytes) -> list[Segment]:
                 continue
             if _is_heading(block):
                 heading = text
+                section += 1
             add(text)
         elif isinstance(block, Table):
             for row in block.rows:

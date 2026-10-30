@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
 import type { StreamMessageOptions } from '@/api/stream'
 import { setMatchMedia } from '@/test/matchMedia'
-import { makeDocument, makeMessage, renderWithProviders } from '@/test/render'
+import { makeCitation, makeDocument, makeMessage, renderWithProviders } from '@/test/render'
 
 import { ChatPanel } from './ChatPanel'
 
@@ -116,6 +116,30 @@ describe('ChatPanel', () => {
 
     const sources = await screen.findByRole('list', { name: 'Sources' })
     expect(sources.textContent).toContain('faq.txt · lines 3–8')
+  })
+
+  it('numbers a saved answer’s citations 1, 2 in order of first use, in the text and the list', async () => {
+    mocks.messages.mockResolvedValue([
+      makeMessage({
+        content: 'Cards are accepted [3]. We open at 9 [1].',
+        citations: [
+          makeCitation({ number: 1, filename: 'hours.txt', label: 'line 1' }),
+          makeCitation({ number: 3, filename: 'payments.txt', label: 'line 7' }),
+        ],
+      }),
+    ])
+    renderPanel()
+
+    expect(
+      await screen.findByRole('button', { name: 'Source 1: payments.txt, line 7' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Source 2: hours.txt, line 1' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Source 3/ })).toBeNull()
+    const items = within(screen.getByRole('list', { name: 'Sources' })).getAllByRole('listitem')
+    expect(items.map((item) => item.textContent)).toEqual([
+      'payments.txt · line 71',
+      'hours.txt · line 12',
+    ])
   })
 
   it('previews a citation from saved history, with the original from this workspace', async () => {

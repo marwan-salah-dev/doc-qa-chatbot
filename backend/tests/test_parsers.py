@@ -1,7 +1,13 @@
 from io import BytesIO
 
 import pytest
-from builders import make_docx, make_encrypted_pdf, make_image_only_pdf, make_pdf
+from builders import (
+    make_docx,
+    make_encrypted_pdf,
+    make_image_only_pdf,
+    make_pdf,
+    make_sized_pdf,
+)
 from docx import Document
 
 from app.services.parsers import Location, ParseError, file_kind, parse_document
@@ -15,6 +21,41 @@ def test_pdf_one_segment_per_page_skipping_blank_pages():
         Location("pdf", page=1),
         Location("pdf", page=3),
     ]
+
+
+def test_pdf_splits_pages_into_sections_at_headings_set_in_a_larger_font():
+    body, heading = 10.0, 14.0
+    data = make_sized_pdf(
+        [
+            [
+                ("Handbook", 20.0),
+                ("Welcome.", body),
+                ("Refunds", heading),
+                ("Within 5 days.", body),
+            ],
+            [("Card refunds too.", body), ("Shipping", heading), ("We ship.", body)],
+        ]
+    )
+
+    segments = parse_document("a.pdf", data)
+
+    assert [(s.text, s.location) for s in segments] == [
+        ("Handbook\nWelcome.", Location("pdf", page=1, heading="Handbook")),
+        ("Refunds\nWithin 5 days.", Location("pdf", page=1, heading="Refunds")),
+        # The section carries on over the page break, still under its heading
+        ("Card refunds too.", Location("pdf", page=2, heading="Refunds")),
+        ("Shipping\nWe ship.", Location("pdf", page=2, heading="Shipping")),
+    ]
+    sections = [s.section for s in segments]
+    assert sections[1] == sections[2]
+    assert len(set(sections)) == 3
+
+
+def test_pdf_with_one_font_size_is_a_single_section():
+    segments = parse_document("a.pdf", make_pdf(["First page", "Second page"]))
+
+    assert {s.section for s in segments} == {0}
+    assert all(s.location.heading is None for s in segments)
 
 
 def test_image_only_pdf_gives_no_text_error():
@@ -49,6 +90,8 @@ def test_docx_tracks_headings_and_paragraph_numbers():
         ("Plan | Price", "Shipping", 6),
     ]
     assert all(s.location.kind == "docx" and s.location.start == s.location.end for s in segments)
+    # Each heading opens a new section; the table row stays in the section it sits under
+    assert [s.section for s in segments] == [0, 1, 1, 2, 2, 2]
 
 
 def test_corrupt_docx():
@@ -70,6 +113,38 @@ def test_txt_line_numbers_skip_blank_lines():
         ("first", 1, 1),
         ("second", 3, 3),
         ("third", 4, 4),
+    ]
+
+
+def test_txt_without_structure_is_a_single_section():
+    segments = parse_document("a.txt", b"first\nsecond\n\nthird")
+
+    assert {s.section for s in segments} == {0}
+    assert all(s.location.heading is None for s in segments)
+
+
+def test_txt_faq_pairs_are_sections_headed_by_their_question():
+    data = b"Clinic FAQ\n\nQ: Are you open on Sundays?\nA: No.\n\nQ: Do you take cards?\nA: Yes.\n"
+
+    segments = parse_document("faq.txt", data)
+
+    assert [(s.text, s.location.heading, s.location.start, s.section) for s in segments] == [
+        ("Clinic FAQ", None, 1, 0),
+        ("Q: Are you open on Sundays?", "Are you open on Sundays?", 3, 1),
+        ("A: No.", "Are you open on Sundays?", 4, 1),
+        ("Q: Do you take cards?", "Do you take cards?", 6, 2),
+        ("A: Yes.", "Do you take cards?", 7, 2),
+    ]
+
+
+def test_txt_markdown_headings_open_sections():
+    segments = parse_document("notes.txt", b"# Refunds\nWithin 5 days.\n## Shipping\nWorldwide.")
+
+    assert [(s.location.heading, s.section) for s in segments] == [
+        ("Refunds", 1),
+        ("Refunds", 1),
+        ("Shipping", 2),
+        ("Shipping", 2),
     ]
 
 
@@ -116,6 +191,9 @@ def test_file_kind_is_case_insensitive():
     ("location", "label"),
     [
         (Location("pdf", page=3), "page 3"),
+        (Location("pdf", page=2, heading="Payments and refunds"), "Payments and refunds · page 2"),
+        (Location("pdf", page=1, page_end=2, heading="Refunds"), "Refunds · pages 1-2"),
+        (Location("txt", heading="Take cards?", start=6, end=7), "Take cards? · lines 6-7"),
         (Location("txt", start=4, end=4), "line 4"),
         (Location("txt", start=4, end=9), "lines 4-9"),
         (Location("docx", heading="Refunds", start=2, end=5), "Refunds · paragraphs 2-5"),

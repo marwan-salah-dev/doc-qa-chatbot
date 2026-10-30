@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 
 import type { Citation } from '@/api/types'
 import { CitationChip } from '@/components/CitationChip'
-import { citationNumberFromHref, remarkCitations } from '@/lib/citations'
+import { citationNumberFromHref, numberCitationsByFirstUse, remarkCitations } from '@/lib/citations'
 
 const CitationsContext = createContext<ReadonlyMap<number, Citation>>(new Map())
 
@@ -29,11 +29,13 @@ interface MarkdownProps {
   citations?: Citation[]
 }
 
+const NO_CITATIONS: Citation[] = []
+
 /** An answer rendered as GitHub-flavoured markdown. Raw HTML is never rendered (there is no
  * rehype-raw), so it shows as text, and react-markdown's default URL check drops `javascript:`
- * links. */
-export function Markdown({ text, citations = [] }: MarkdownProps) {
-  const byNumber = useMemo(() => new Map(citations.map((c) => [c.number, c])), [citations])
+ * links. Citation chips are numbered 1, 2, 3 in order of first use, as in the Sources list. */
+export function Markdown({ text, citations = NO_CITATIONS }: MarkdownProps) {
+  const byNumber = useMemo(() => numberCitationsByFirstUse(text, citations), [text, citations])
   const remarkPlugins = useMemo<Options['remarkPlugins']>(
     () => [remarkGfm, [remarkCitations, { numbers: new Set(byNumber.keys()) }]],
     [byNumber],

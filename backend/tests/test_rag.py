@@ -475,6 +475,7 @@ def test_strip_citation_markers():
     assert strip_citation_markers("Five days [1]. Final [1, 2][3].") == "Five days. Final."
     assert strip_citation_markers("Keep [a] and [note].") == "Keep [a] and [note]."
     assert strip_citation_markers("Five days [1\N{DAGGER}faq.txt].") == "Five days."
+    assert strip_citation_markers("Five days\N{NO-BREAK SPACE}[1].") == "Five days."
 
 
 # --- citation normalization (gpt-oss on Groq writes 【1】 and 【1†source】) ---
@@ -485,7 +486,9 @@ def test_strip_citation_markers():
     [
         ("\N{LEFT BLACK LENTICULAR BRACKET}", "["),
         ("\N{RIGHT BLACK LENTICULAR BRACKET}", "]"),
-        ("5\N{NARROW NO-BREAK SPACE}days", "5 days"),
+        # A no-break space, not a plain one, so "0 %" or "5 days" never wraps apart
+        ("5\N{NARROW NO-BREAK SPACE}days", "5\N{NO-BREAK SPACE}days"),
+        ("0\N{NARROW NO-BREAK SPACE}%", "0\N{NO-BREAK SPACE}%"),
         ("days \N{LEFT BLACK LENTICULAR BRACKET}1\N{RIGHT BLACK LENTICULAR BRACKET}.", "days [1]."),
         ("plain text [1].", "plain text [1]."),
     ],
@@ -518,7 +521,7 @@ async def test_lenticular_brackets_split_across_deltas_still_count_as_citations(
 
     events = await collect(make_service(store, chat).answer(WS, QUESTION))
 
-    expected = "Refunds are processed within 5 business days [1]."
+    expected = "Refunds are processed within 5\N{NO-BREAK SPACE}business days [1]."
     assert answer_text(events) == expected  # what the user sees while it streams
     done = done_of(events)
     assert done.answer == expected

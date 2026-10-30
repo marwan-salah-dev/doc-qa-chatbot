@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { citationHref, citationNumberFromHref, splitCitations } from './citations'
+import { makeCitation } from '@/test/render'
+
+import {
+  citationHref,
+  citationNumberFromHref,
+  numberCitationsByFirstUse,
+  splitCitations,
+} from './citations'
 
 const known = new Set([1, 2, 3])
 
@@ -27,6 +34,32 @@ describe('splitCitations', () => {
 
   it('returns text without markers unchanged', () => {
     expect(splitCitations('Plain text', known)).toEqual(['Plain text'])
+  })
+})
+
+describe('numberCitationsByFirstUse', () => {
+  const source = (number: number) => makeCitation({ number, filename: `doc${String(number)}.txt` })
+
+  it('numbers the cited sources 1, 2, 3 in the order the answer first cites them', () => {
+    const numbered = numberCitationsByFirstUse('Cards [3]. Hours [1, 3]. Fees [4].', [
+      source(1),
+      source(3),
+      source(4),
+    ])
+
+    // Keyed by the number in the text; the value is the source with its number for display
+    expect([...numbered.keys()]).toEqual([3, 1, 4])
+    expect([...numbered.values()].map((c) => [c.number, c.filename])).toEqual([
+      [1, 'doc3.txt'],
+      [2, 'doc1.txt'],
+      [3, 'doc4.txt'],
+    ])
+  })
+
+  it('leaves out sources the answer never cites, and markers with no source', () => {
+    const numbered = numberCitationsByFirstUse('Only [2] and [9].', [source(1), source(2)])
+
+    expect([...numbered.entries()].map(([marker, c]) => [marker, c.number])).toEqual([[2, 1]])
   })
 })
 

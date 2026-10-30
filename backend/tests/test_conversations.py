@@ -474,10 +474,12 @@ def test_gpt_oss_style_citations_are_normalized_in_the_stream_and_the_saved_answ
 
     events = ask_ok(client, workspace_id, conversation_id)
 
-    assert answer_of(events) == CITED_REPLY
+    # The narrow no-break space becomes a no-break space, so "5 business" never wraps apart
+    expected = CITED_REPLY.replace("5 business", "5\N{NO-BREAK SPACE}business")
+    assert answer_of(events) == expected
     done = done_of(events)
     assert [citation["number"] for citation in done["citations"]] == [1]
     assert done["uncited"] is False
     _user, assistant = messages_of(client, workspace_id, conversation_id)
-    assert assistant["content"] == CITED_REPLY
+    assert assistant["content"] == expected
     assert assistant["uncited"] is False

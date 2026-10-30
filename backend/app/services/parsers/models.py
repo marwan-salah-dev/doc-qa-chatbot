@@ -13,9 +13,10 @@ class Location:
     """Where a piece of text came from. Which fields are set depends on `kind`.
 
     PDF: `page` (1-based), plus `page_end` when a chunk spans several pages.
-    DOCX: `heading` (nearest heading above, if any) and the paragraph range `start`..`end`
-    (1-based, counting non-empty paragraphs and table rows).
+    DOCX: the paragraph range `start`..`end` (1-based, counting non-empty paragraphs and table
+    rows).
     TXT: the line range `start`..`end` (1-based).
+    Any kind: `heading`, the section heading in force (nearest heading above), if there is one.
     """
 
     kind: FileKind
@@ -29,18 +30,25 @@ class Location:
         """Human-readable location, worded honestly for the file type."""
         if self.kind == "pdf":
             if self.page_end is not None and self.page_end != self.page:
-                return f"pages {self.page}-{self.page_end}"
-            return f"page {self.page}"
-        span = f"{self.start}" if self.start == self.end else f"{self.start}-{self.end}"
-        if self.kind == "txt":
-            return f"line {span}" if self.start == self.end else f"lines {span}"
-        paragraphs = f"paragraph {span}" if self.start == self.end else f"paragraphs {span}"
-        return f"{self.heading} · {paragraphs}" if self.heading else paragraphs
+                where = f"pages {self.page}-{self.page_end}"
+            else:
+                where = f"page {self.page}"
+        else:
+            span = f"{self.start}" if self.start == self.end else f"{self.start}-{self.end}"
+            unit = "line" if self.kind == "txt" else "paragraph"
+            where = f"{unit} {span}" if self.start == self.end else f"{unit}s {span}"
+        return f"{self.heading} · {where}" if self.heading else where
 
 
 @dataclass(frozen=True, slots=True)
 class Segment:
-    """A piece of extracted text plus its location. The chunker merges segments."""
+    """A piece of extracted text plus its location. The chunker merges segments.
+
+    `section` numbers the document's structural sections (a heading and what follows it, or an
+    FAQ question and its answer). Consecutive segments with the same number belong together, and
+    the chunker never merges across a change. A document with no structure is all section 0.
+    """
 
     text: str
     location: Location
+    section: int = 0
