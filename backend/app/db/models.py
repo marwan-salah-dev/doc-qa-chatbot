@@ -62,6 +62,12 @@ class Workspace(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_new_id)
     name: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
+    # The seeded demo: read-only for visitors and the only one with starter questions
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    # SHA-256 of the creating visitor's id (public demo only; the id itself is never stored)
+    owner_hash: Mapped[str | None] = mapped_column(String(64), default=None)
+    # Visitor workspaces are deleted after this; None = kept
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
 
     documents: Mapped[list["Document"]] = relationship(
         back_populates="workspace", cascade="all, delete-orphan", passive_deletes=True
@@ -103,6 +109,8 @@ class Conversation(Base):
     )
     title: Mapped[str] = mapped_column(String(200), default="New conversation")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
+    # As Workspace.owner_hash: whose chat this is on the public demo
+    owner_hash: Mapped[str | None] = mapped_column(String(64), default=None)
 
     workspace: Mapped["Workspace"] = relationship(back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(
@@ -135,3 +143,12 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+
+class LlmUsageDay(Base):
+    """LLM tokens used by all chats on one UTC day, for the public demo's daily cap."""
+
+    __tablename__ = "llm_usage_days"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)  # YYYY-MM-DD
+    tokens: Mapped[int] = mapped_column(Integer, default=0)

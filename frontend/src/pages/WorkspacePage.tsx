@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router'
 
-import { useWorkspaces } from '@/api/queries'
+import { useConfig, useWorkspaces } from '@/api/queries'
 import { CenteredMessage } from '@/components/CenteredMessage'
 import { ChatPanel } from '@/components/ChatPanel'
 import { DocumentList } from '@/components/DocumentList'
@@ -15,6 +15,7 @@ import { useMediaQuery, WIDE_LAYOUT } from '@/lib/useMediaQuery'
 export function WorkspacePage() {
   const { workspaceId } = useParams()
   const workspaces = useWorkspaces()
+  const config = useConfig()
   const wide = useMediaQuery(WIDE_LAYOUT)
 
   if (workspaces.isPending) {
@@ -58,15 +59,17 @@ export function WorkspacePage() {
     )
   }
 
+  // The public demo's seeded workspace: the server refuses changes, so don't offer them
+  const readOnly = workspace.is_demo && config.data?.public_demo === true
   const documents = (
     <div className="grid content-start gap-5">
-      <WorkspaceHeader workspace={workspace} />
+      <WorkspaceHeader workspace={workspace} readOnly={readOnly} />
       <section aria-labelledby="documents-heading" className="grid gap-3">
         <h2 id="documents-heading" className="text-xs font-medium text-muted-foreground">
           Documents
         </h2>
-        <DocumentUploader workspaceId={workspace.id} />
-        <DocumentList workspaceId={workspace.id} />
+        {!readOnly && <DocumentUploader workspaceId={workspace.id} />}
+        <DocumentList workspaceId={workspace.id} readOnly={readOnly} />
       </section>
     </div>
   )

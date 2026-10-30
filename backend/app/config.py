@@ -53,6 +53,22 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     admin_api_key: SecretStr = SecretStr("")
 
+    # Public demo hardening. Nothing below applies unless public_demo is on; 0 turns a limit off.
+    public_demo: bool = False
+    rate_limit_chat_per_minute: int = Field(default=5, ge=0)
+    rate_limit_chat_per_day: int = Field(default=100, ge=0)
+    rate_limit_uploads_per_hour: int = Field(default=10, ge=0)
+    rate_limit_conversations_per_hour: int = Field(default=30, ge=0)
+    # New workspaces per client IP per 24 hours
+    visitor_workspaces_per_ip: int = Field(default=3, ge=0)
+    visitor_workspace_ttl_hours: float = Field(default=24, gt=0)
+    max_documents_per_workspace: int = Field(default=10, ge=0)
+    max_document_chunks: int = Field(default=300, ge=0)
+    max_visitor_storage_mb: int = Field(default=500, ge=0)
+    # Input + output tokens across every chat, per UTC day; below Groq's free 200K
+    daily_token_cap: int = Field(default=150_000, ge=0)
+    cleanup_interval_minutes: float = Field(default=10, gt=0)
+
     # Logging
     log_level: str = "INFO"
     log_json: bool = True

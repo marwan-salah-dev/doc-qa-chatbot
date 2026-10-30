@@ -6,10 +6,13 @@ Start the backend first, then run from backend/:
 
 It goes through the running API, so the files are validated, deduplicated and indexed exactly
 like a browser upload (and the server stays the only process writing to its Chroma store). It is
-safe to run again: the workspace is found by name, files already in it are skipped, a file that
-failed to index is reindexed, and a file whose committed copy has changed (a different SHA-256)
-is deleted and uploaded again, so edits to demo_data/ reach the index. Other workspaces are never
-touched.
+safe to run again: the workspace is found by its `is_demo` flag, files already in it are
+skipped, a file that failed to index is reindexed, and a file whose committed copy has changed
+(a different SHA-256) is deleted and uploaded again, so edits to demo_data/ reach the index.
+Other workspaces are never touched.
+
+On the public demo (PUBLIC_DEMO=true) the demo workspace is read-only for visitors, so the seed
+sends ADMIN_API_KEY (read from the backend's settings, never printed) as `X-Admin-Key`.
 """
 
 import argparse
@@ -23,6 +26,8 @@ from typing import Any, Protocol
 
 import httpx
 
+from app.api.access import ADMIN_HEADER
+from app.config import get_settings
 from app.demo import DEMO_WORKSPACE_NAME
 
 DEMO_DATA_DIR = Path(__file__).resolve().parents[1] / "demo_data"
@@ -109,14 +114,17 @@ def seed(
 
 def _find_or_create_workspace(client: ApiClient) -> tuple[str, bool]:
     listed = _check(client.get("/workspaces"), "GET /workspaces").json()
-    matches = [w for w in listed if w["name"] == DEMO_WORKSPACE_NAME]
+    matches = [w for w in listed if w["is_demo"]]
     if matches:
         # Should there ever be several, keep using the oldest one
         return min(matches, key=lambda w: w["created_at"])["id"], False
-    response = _check(
-        client.post("/workspaces", json={"name": DEMO_WORKSPACE_NAME}), "POST /workspaces"
-    )
+    body = {"name": DEMO_WORKSPACE_NAME, "is_demo": True}
+    response = _check(client.post("/workspaces", json=body), "POST /workspaces")
     return response.json()["id"], True
+
+
+def admin_headers(admin_api_key: str) -> dict[str, str]:
+    return {ADMIN_HEADER: admin_api_key} if admin_api_key else {}
 
 
 def _documents(client: ApiClient, workspace_id: str) -> list[dict]:
@@ -170,7 +178,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        with httpx.Client(base_url=args.api_url, timeout=60) as client:
+        headers = admin_headers(get_settings().admin_api_key.get_secret_value())
+        with httpx.Client(base_url=args.api_url, timeout=60, headers=headers) as client:
             result = seed(client, timeout=args.timeout)
     except httpx.TransportError:
         print(

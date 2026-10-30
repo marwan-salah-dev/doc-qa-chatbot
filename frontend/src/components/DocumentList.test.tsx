@@ -167,4 +167,16 @@ describe('DocumentList', () => {
     await vi.advanceTimersByTimeAsync(20_000)
     expect(mocks.list).toHaveBeenCalledTimes(2)
   })
+
+  it('offers no delete or reindex in the read-only demo workspace', async () => {
+    mocks.list.mockResolvedValue([
+      makeDocument({ id: '1', filename: 'one.txt' }),
+      makeDocument({ id: '2', filename: 'two.txt', status: 'failed', error: 'Bad file.' }),
+    ])
+    renderWithProviders(<DocumentList workspaceId="ws1" readOnly />)
+
+    expect(await screen.findByText('one.txt')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /reindex/i })).toBeNull()
+  })
 })

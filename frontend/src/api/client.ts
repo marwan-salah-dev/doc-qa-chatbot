@@ -1,3 +1,5 @@
+import { apiHeaders } from '@/lib/visitor'
+
 import type { AppConfig, Conversation, DocumentItem, Message, Workspace } from './types'
 
 const configuredBase = import.meta.env.VITE_API_BASE_URL
@@ -54,6 +56,7 @@ function messageFromDetail(detail: unknown): string | undefined {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
+  for (const [name, value] of Object.entries(apiHeaders())) headers.set(name, value)
   // FormData bodies must set their own multipart boundary, so only JSON gets a header
   if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
   const response = await fetch(path, { ...init, headers })
@@ -102,19 +105,31 @@ export const api = {
       request<DocumentItem>(apiPath`/workspaces/${workspaceId}/documents/${id}/reindex`, {
         method: 'POST',
       }),
-    /** The original file, for previews and downloads. */
+    /** The original file's URL. Fetching it needs `apiHeaders()`, so plain links can't use it:
+     * react-pdf gets the headers, and "Open original" goes through `fileBlob`. */
     fileUrl: (workspaceId: string, id: string) =>
       apiPath`/workspaces/${workspaceId}/documents/${id}/file`,
+    /** The original file's contents, for opening it in a new tab or saving it. */
+    fileBlob: async (workspaceId: string, id: string) => {
+      const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`, {
+        headers: apiHeaders(),
+      })
+      if (!response.ok) throw await errorFromResponse(response)
+      return response.blob()
+    },
     /** Whether the original is still stored (a reseeded or deleted document's may be gone). */
     fileExists: async (workspaceId: string, id: string) => {
       const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`, {
         method: 'HEAD',
+        headers: apiHeaders(),
       })
       return response.ok
     },
     /** The original of a text file, for showing a passage among the lines around it. */
     fileText: async (workspaceId: string, id: string) => {
-      const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`)
+      const response = await fetch(apiPath`/workspaces/${workspaceId}/documents/${id}/file`, {
+        headers: apiHeaders(),
+      })
       if (!response.ok) throw await errorFromResponse(response)
       return response.text()
     },

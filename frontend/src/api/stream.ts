@@ -1,3 +1,5 @@
+import { apiHeaders } from '@/lib/visitor'
+
 import { apiPath, errorFromResponse } from './client'
 import { type ChatStreamEvent, createSseParser, toChatEvent } from './sse'
 
@@ -29,7 +31,11 @@ export async function streamMessage({
       apiPath`/workspaces/${workspaceId}/conversations/${conversationId}/messages`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        headers: {
+          ...apiHeaders(),
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({ question }),
         signal,
       },

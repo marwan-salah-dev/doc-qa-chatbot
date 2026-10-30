@@ -12,8 +12,14 @@ class ConfigOut(BaseModel):
 
     max_upload_mb: int
     max_question_chars: int
+    # The public demo: the seeded demo workspace is read-only and visitor workspaces expire
+    public_demo: bool
 
 
 @router.get("/config", response_model=ConfigOut)
 def get_config(settings: AppSettings) -> ConfigOut:
-    return ConfigOut(max_upload_mb=settings.max_upload_mb, max_question_chars=MAX_QUESTION_CHARS)
+    return ConfigOut(
+        max_upload_mb=settings.max_upload_mb,
+        max_question_chars=MAX_QUESTION_CHARS,
+        public_demo=settings.public_demo,
+    )

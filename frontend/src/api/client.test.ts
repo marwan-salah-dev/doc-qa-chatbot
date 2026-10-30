@@ -13,6 +13,41 @@ afterEach(() => {
 })
 
 describe('api client', () => {
+  it('sends the visitor id with every request', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(Response.json([])))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.workspaces.list()
+    await api.documents.list('w1')
+
+    const ids = (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([, init]) =>
+      new Headers(init.headers).get('X-Visitor-Id'),
+    )
+    expect(ids[0]).toMatch(/^[0-9a-f-]{36}$/)
+    expect(ids[1]).toBe(ids[0])
+  })
+
+  it('fetches an original file as a blob, with the visitor id', async () => {
+    const fetchMock = mockFetch(
+      new Response('hello', { headers: { 'Content-Type': 'text/plain' } }),
+    )
+
+    const blob = await api.documents.fileBlob('w1', 'd1')
+
+    expect(await blob.text()).toBe('hello')
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/workspaces/w1/documents/d1/file')
+    expect(new Headers(init.headers).get('X-Visitor-Id')).toBeTruthy()
+  })
+
+  it('throws the server message when the original file cannot be fetched', async () => {
+    mockFetch(Response.json({ detail: 'Document not found' }, { status: 404 }))
+
+    await expect(api.documents.fileBlob('w1', 'd1')).rejects.toMatchObject({
+      message: 'Document not found',
+    })
+  })
+
   it('returns parsed JSON and calls the proxied path', async () => {
     const workspaces = [{ id: 'w1', name: 'Acme Dental', created_at: '2026-10-29T10:00:00Z' }]
     const fetchMock = mockFetch(Response.json(workspaces))
@@ -98,6 +133,7 @@ describe('api client', () => {
     expect(await api.documents.fileExists('ws1', 'd1')).toBe(true)
     expect(fetchMock).toHaveBeenCalledWith('/api/workspaces/ws1/documents/d1/file', {
       method: 'HEAD',
+      headers: { 'X-Visitor-Id': expect.any(String) as string },
     })
   })
 

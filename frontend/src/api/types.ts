@@ -6,6 +6,8 @@ export interface AppConfig {
   max_upload_mb: number
   /** The longest question the chat endpoint accepts. */
   max_question_chars: number
+  /** The public demo: the seeded demo workspace is read-only and visitor workspaces expire. */
+  public_demo: boolean
 }
 
 export interface Workspace {
@@ -14,6 +16,10 @@ export interface Workspace {
   created_at: string
   /** Suggested first questions for a new chat; empty except in the seeded demo workspace */
   starter_questions: string[]
+  /** The seeded demo workspace (read-only for visitors on the public demo) */
+  is_demo: boolean
+  /** When a visitor's workspace on the public demo is deleted; null = kept */
+  expires_at: string | null
 }
 
 export type DocumentStatus = 'pending' | 'processing' | 'ready' | 'failed'

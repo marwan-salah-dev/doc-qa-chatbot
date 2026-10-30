@@ -152,9 +152,8 @@ describe('ChatPanel', () => {
     await user.click(await screen.findByRole('button', { name: /Source 1: faq\.txt/ }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('We are open Monday to Friday, 9am to 5pm.')).toBeTruthy()
-    expect(
-      (await within(dialog).findByRole('link', { name: /open original/i })).getAttribute('href'),
-    ).toBe('/api/workspaces/ws1/documents/d1/file')
+    expect(await within(dialog).findByRole('button', { name: /open original/i })).toBeTruthy()
+    expect(mocks.fileExists).toHaveBeenCalledWith('ws1', 'd1')
   })
 
   it('explains why sending is disabled while documents are indexing', async () => {

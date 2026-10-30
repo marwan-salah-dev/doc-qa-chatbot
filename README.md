@@ -81,7 +81,7 @@ uv run python -m scripts.seed_demo
 Production-style: two containers sized for a 2 GB server. `backend` runs FastAPI with embedded Chroma and the bge-small model baked into the image, and `web` runs nginx, which serves the built React app and proxies `/api` with streaming unbuffered. Requirements: Docker with Compose v2.
 
 ```bash
-cp backend/.env.example backend/.env    # then fill in your API key (the only file you need to edit)
+cp backend/.env.example backend/.env    # then fill in your API key and ADMIN_API_KEY (the only file you need to edit)
 docker compose up -d --build            # first build downloads CPU-only PyTorch and the model: several minutes
 docker compose exec backend python -m scripts.seed_demo --api-url http://127.0.0.1:8000 --ui-url http://127.0.0.1:8080
 ```
@@ -94,3 +94,15 @@ Open http://127.0.0.1:8080.
 - **Low-memory option:** set `EMBEDDING_PROVIDER=openai` in `backend/.env` (needs `OPENAI_API_KEY`). The local model and PyTorch are then never loaded, so the backend stays at a few hundred MB. Existing documents need a re-index after switching.
 - **One worker on purpose:** SQLite, embedded Chroma, the model lock and the one-reply-per-conversation guard all live in a single process, so don't scale the backend to more than one worker or replica.
 - Logs: `docker compose logs -f backend`. Stop: `docker compose down`.
+
+### Public demo mode
+
+The compose stack runs as a public, login-free demo (`PUBLIC_DEMO=true`). For a private client deployment, start it with `PUBLIC_DEMO=false docker compose up -d` and none of the following applies. Local development (`scripts\dev.ps1`) reads `PUBLIC_DEMO` from `backend/.env`, where it is `false` by default.
+
+- **No login, but private:** the browser makes a random visitor id (`crypto.randomUUID()`, kept in localStorage) and sends it as `X-Visitor-Id`. The server stores only its SHA-256. Each visitor sees their own workspaces and chats, plus the seeded demo workspace, and gets a 404 for anyone else's (so ids can't be probed).
+- **Read-only demo workspace:** visitors can chat in it, but uploading, deleting, renaming and reindexing get a 403, and the UI hides those controls. The seed sends `ADMIN_API_KEY` as `X-Admin-Key` to manage it, so set that key in `backend/.env` first.
+- **Temporary workspaces:** visitor workspaces are deleted 24 h after they are created (`VISITOR_WORKSPACE_TTL_HOURS`), and so are visitors' chats in the demo workspace. An asyncio task in the app sweeps every 10 minutes and once at startup. That works because there is exactly one uvicorn worker, so there is exactly one sweeper. Expired workspaces return 404 right away, so the sweep only frees disk.
+- **Limits, per client IP** (the IP nginx saw; uvicorn trusts `X-Forwarded-For` only from the compose network): questions per minute and per day, uploads per hour, new chats per hour, and new workspaces per 24 h. Over a limit, the API answers 429 with `Retry-After`, and the UI shows the wait. Limits are kept in memory, so a restart resets them.
+- **Caps:** documents per workspace, total upload storage, and the sections per document (checked before anything is embedded). There is also a **daily LLM token cap** (`DAILY_TOKEN_CAP`, 150K by default, below Groq's free 200K/day). Once it's reached, questions get "The demo has reached its daily question limit" until midnight UTC, without calling the LLM. A provider's own 429 shows as "The assistant is busy".
+
+Every limit is set in `backend/.env.example`, and 0 turns one off.

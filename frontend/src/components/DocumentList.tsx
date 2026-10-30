@@ -12,8 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatBytes } from '@/lib/formatBytes'
 
 /** The workspace's documents with their indexing status. The list refreshes itself while any
- * document is still being indexed (see `documentsRefetchInterval`). */
-export function DocumentList({ workspaceId }: { workspaceId: string }) {
+ * document is still being indexed (see `documentsRefetchInterval`). `readOnly` (the public
+ * demo's seeded workspace) hides delete and reindex, which the server would refuse anyway. */
+export function DocumentList({
+  workspaceId,
+  readOnly = false,
+}: {
+  workspaceId: string
+  readOnly?: boolean
+}) {
   const documents = useDocuments(workspaceId)
   const reindex = useReindexDocument(workspaceId)
   const remove = useDeleteDocument(workspaceId)
@@ -92,43 +99,47 @@ export function DocumentList({ workspaceId }: { workspaceId: string }) {
                     <DocumentStatusBadge status={document.status} />
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${document.filename}`}
-                  // Deleting mid-index could leave the file's chunks behind in the vector store
-                  disabled={busy}
-                  title={busy ? 'Wait until indexing finishes' : 'Delete'}
-                  className="text-muted-foreground opacity-70 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
-                  onClick={() => {
-                    remove.reset()
-                    setTarget(document)
-                    setConfirmOpen(true)
-                  }}
-                >
-                  <Trash2Icon />
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Delete ${document.filename}`}
+                    // Deleting mid-index could leave the file's chunks behind in the vector store
+                    disabled={busy}
+                    title={busy ? 'Wait until indexing finishes' : 'Delete'}
+                    className="text-muted-foreground opacity-70 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                    onClick={() => {
+                      remove.reset()
+                      setTarget(document)
+                      setConfirmOpen(true)
+                    }}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                )}
               </div>
               {document.status === 'failed' && (
                 <div className="ml-11 grid gap-1.5">
                   {document.error && <p className="text-xs text-destructive">{document.error}</p>}
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="justify-self-start"
-                    aria-label={`Reindex ${document.filename}`}
-                    disabled={reindex.isPending}
-                    onClick={() => {
-                      reindex.mutate(document.id, {
-                        onSuccess: () => {
-                          toast.success(`Reindexing ${document.filename}`)
-                        },
-                      })
-                    }}
-                  >
-                    <RefreshCwIcon />
-                    Reindex
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="justify-self-start"
+                      aria-label={`Reindex ${document.filename}`}
+                      disabled={reindex.isPending}
+                      onClick={() => {
+                        reindex.mutate(document.id, {
+                          onSuccess: () => {
+                            toast.success(`Reindexing ${document.filename}`)
+                          },
+                        })
+                      }}
+                    >
+                      <RefreshCwIcon />
+                      Reindex
+                    </Button>
+                  )}
                 </div>
               )}
             </li>

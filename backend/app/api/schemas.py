@@ -10,7 +10,7 @@ from app.services.parsers import FileKind
 MAX_QUESTION_CHARS = 4000
 
 
-class WorkspaceCreate(BaseModel):
+class WorkspaceUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
     @field_validator("name")
@@ -22,8 +22,9 @@ class WorkspaceCreate(BaseModel):
         return value
 
 
-class WorkspaceUpdate(WorkspaceCreate):
-    pass
+class WorkspaceCreate(WorkspaceUpdate):
+    # The seeded demo workspace; on the public demo only the admin may create one
+    is_demo: bool = False
 
 
 class WorkspaceOut(BaseModel):
@@ -32,12 +33,15 @@ class WorkspaceOut(BaseModel):
     id: str
     name: str
     created_at: datetime
+    is_demo: bool
+    # When a visitor workspace on the public demo is deleted; None = kept
+    expires_at: datetime | None
 
     @computed_field
     @property
     def starter_questions(self) -> list[str]:
         """Suggested first questions, shown as chips in a new chat (the demo workspace only)."""
-        return starter_questions(self.name)
+        return starter_questions(self.is_demo)
 
 
 class DocumentOut(BaseModel):

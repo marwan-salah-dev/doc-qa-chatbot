@@ -14,7 +14,7 @@ from app.db.models import Document, DocumentStatus
 from app.demo import DEMO_STARTER_QUESTIONS, DEMO_WORKSPACE_NAME
 from app.services.parsers import parse_document
 from scripts import demo_content as content
-from scripts.seed_demo import DEMO_DATA_DIR, DEMO_FILES, SeedError, seed
+from scripts.seed_demo import DEMO_DATA_DIR, DEMO_FILES, SeedError, admin_headers, seed
 
 PDF, DOCX, TXT = DEMO_FILES
 
@@ -133,6 +133,8 @@ def test_seed_creates_the_demo_workspace_with_three_ready_documents(client: Test
     assert sorted(result.uploaded) == sorted(DEMO_FILES)
     [workspace] = [w for w in workspaces(client) if w["name"] == DEMO_WORKSPACE_NAME]
     assert workspace["id"] == result.workspace_id
+    assert workspace["is_demo"] is True
+    assert workspace["starter_questions"] == list(DEMO_STARTER_QUESTIONS)
     docs = documents(client, result.workspace_id)
     assert sorted(d["filename"] for d in docs) == sorted(DEMO_FILES)
     assert {d["status"] for d in docs} == {"ready"}
@@ -152,6 +154,34 @@ def test_seeding_twice_creates_nothing_new(client: TestClient) -> None:
     assert {d["id"] for d in documents(client, first.workspace_id)} == ids_before
 
 
+def test_seed_finds_the_demo_by_its_flag_not_its_name(client: TestClient) -> None:
+    copycat = client.post("/workspaces", json={"name": DEMO_WORKSPACE_NAME}).json()
+
+    result = seed(client, poll_interval=0)
+
+    assert result.created_workspace
+    assert result.workspace_id != copycat["id"]
+    assert documents(client, copycat["id"]) == []
+
+
+def test_on_the_public_demo_the_seed_needs_the_admin_key(
+    make_client: Callable[..., TestClient],
+) -> None:
+    public = make_client(public_demo=True, admin_api_key="seed-key-for-tests")
+
+    with pytest.raises(SeedError, match="403"):
+        seed(public, poll_interval=0)
+
+    public.headers.update(admin_headers("seed-key-for-tests"))
+    result = seed(public, poll_interval=0)
+    assert {d["status"] for d in documents(public, result.workspace_id)} == {"ready"}
+
+
+def test_admin_headers_are_only_sent_when_a_key_is_set() -> None:
+    assert admin_headers("") == {}
+    assert admin_headers("k") == {"X-Admin-Key": "k"}
+
+
 def test_seed_leaves_other_workspaces_alone(client: TestClient) -> None:
     acme = client.post("/workspaces", json={"name": "Acme Dental"}).json()
     client.post(
@@ -162,9 +192,7 @@ def test_seed_leaves_other_workspaces_alone(client: TestClient) -> None:
 
     seed(client, poll_interval=0)
 
-    assert [w for w in workspaces(client) if w["id"] == acme["id"]] == [
-        acme | {"starter_questions": []}
-    ]
+    assert [w for w in workspaces(client) if w["id"] == acme["id"]] == [acme]
     assert documents(client, acme["id"]) == acme_docs
 
 
@@ -225,10 +253,13 @@ def test_seed_reports_a_document_that_fails_to_index(client: TestClient, tmp_pat
 
 
 def test_only_the_demo_workspace_has_starter_questions(client: TestClient) -> None:
-    client.post("/workspaces", json={"name": DEMO_WORKSPACE_NAME})
+    # The flag decides, not the name: a visitor could call a workspace anything
+    client.post("/workspaces", json={"name": DEMO_WORKSPACE_NAME, "is_demo": True})
+    client.post("/workspaces", json={"name": DEMO_WORKSPACE_NAME + " (copy)"})
     client.post("/workspaces", json={"name": "Acme Dental"})
 
     by_name = {w["name"]: w["starter_questions"] for w in workspaces(client)}
 
     assert by_name[DEMO_WORKSPACE_NAME] == list(DEMO_STARTER_QUESTIONS)
+    assert by_name[DEMO_WORKSPACE_NAME + " (copy)"] == []
     assert by_name["Acme Dental"] == []

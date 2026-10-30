@@ -37,6 +37,15 @@ afterEach(() => {
 })
 
 describe('streamMessage', () => {
+  it('sends the visitor id', async () => {
+    const fetchMock = mockFetch(new Response(streamOf([])))
+
+    await collect().catch(() => undefined)
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    expect(new Headers(init.headers).get('X-Visitor-Id')).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
   it('delivers sources, deltas and done in order, across byte chunks', async () => {
     const body = encoder.encode(
       'event: sources\ndata: {"sources":[]}\n\n' +

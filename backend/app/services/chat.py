@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.models import Conversation, Message, MessageRole
-from app.services.llm import ChatMessage, LLMError, Usage
+from app.services.llm import ChatMessage, LLMError, Usage, UsageCallback
 from app.services.rag import (
     DeltaEvent,
     DoneEvent,
@@ -177,6 +177,7 @@ async def stream_reply(
     question: str,
     history: Sequence[ChatMessage],
     asked_at: datetime,
+    on_usage: UsageCallback | None = None,
 ) -> AsyncGenerator[ChatEvent, None]:
     """Yield a `SourcesEvent`, `DeltaEvent`s, then `ReplySaved` or `ReplyFailed`.
 
@@ -185,14 +186,21 @@ async def stream_reply(
     (this generator is closed or cancelled), the text that had streamed is saved marked
     `incomplete`: the user saw it, usually because they pressed Stop. If no answer text had
     streamed yet, nothing is saved. One "chat usage" line is logged in every case.
+    `on_usage` also gets every LLM call's usage (the daily token cap counts it).
     """
     usage = _UsageTally()
+
+    def count_usage(call: Usage) -> None:
+        usage.add(call)
+        if on_usage is not None:
+            on_usage(call)
+
     sources: list[Source] = []
     parts: list[str] = []
     outcome: Outcome = "abandoned"
     message_id: str | None = None
     try:
-        answer = rag.answer(workspace_id, question, history, on_usage=usage.add)
+        answer = rag.answer(workspace_id, question, history, on_usage=count_usage)
         async with aclosing(answer) as events:
             async for event in events:
                 if isinstance(event, DoneEvent):

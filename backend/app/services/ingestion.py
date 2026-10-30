@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
-from app.db.models import Document, DocumentStatus
+from app.db.models import Document, DocumentStatus, Workspace
 from app.services.chunking import chunk_segments
 from app.services.embeddings import Embedder
 from app.services.parsers import ParseError, file_kind, parse_document
@@ -39,6 +39,13 @@ def ingest_document(
         document.error = None
         db.commit()
         workspace_id, filename = document.workspace_id, document.filename
+        workspace = db.get(Workspace, workspace_id)
+        # The public demo caps visitor documents (not the seeded demo's) by chunk count
+        max_chunks = (
+            settings.max_document_chunks
+            if settings.public_demo and workspace is not None and not workspace.is_demo
+            else 0
+        )
 
     try:
         path = document_path(settings.data_dir, workspace_id, document_id, file_kind(filename))
@@ -49,6 +56,12 @@ def ingest_document(
             overlap_tokens=settings.chunk_overlap_tokens,
             count_tokens=embedder.count_tokens,
         )
+        if max_chunks and len(chunks) > max_chunks:
+            # Checked before embedding, which is the expensive part (CPU or a paid API)
+            raise ParseError(
+                f"This document is too long for the demo (over {max_chunks} sections). "
+                "Try a shorter file."
+            )
         count = store.add_chunks(workspace_id, document_id, filename, chunks)
     except ParseError as exc:
         # Parser messages are written for users ("No text found in this PDF...")

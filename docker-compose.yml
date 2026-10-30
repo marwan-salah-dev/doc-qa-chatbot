@@ -16,6 +16,9 @@ services:
       CHROMA_HOST: ""
       # Only the web proxy on this network may set the client IP (see networks below)
       FORWARDED_ALLOW_IPS: 172.28.0.0/24
+      # The public demo (ownership, read-only demo workspace, expiry, rate limits, daily token
+      # cap). A private deployment runs `PUBLIC_DEMO=false docker compose up -d` instead.
+      PUBLIC_DEMO: ${PUBLIC_DEMO:-true}
       # Fewer glibc malloc arenas and torch threads: less resident memory for one worker
       MALLOC_ARENA_MAX: "2"
       OMP_NUM_THREADS: "2"

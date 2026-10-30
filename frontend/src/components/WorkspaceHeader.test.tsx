@@ -120,4 +120,19 @@ describe('WorkspaceHeader', () => {
     expect(await within(dialog).findByText('Delete failed.')).toBeTruthy()
     expect(screen.queryByText('Home page')).toBeNull()
   })
+
+  it('hides rename and delete on the read-only demo workspace', () => {
+    renderWithProviders(<WorkspaceHeader workspace={makeWorkspace({ is_demo: true })} readOnly />)
+
+    expect(screen.getByText('Read-only demo')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Rename workspace' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete workspace' })).toBeNull()
+  })
+
+  it('says when a temporary workspace will be deleted', () => {
+    const expires = new Date(Date.now() + 5 * 3600_000 - 60_000).toISOString()
+    renderWithProviders(<WorkspaceHeader workspace={makeWorkspace({ expires_at: expires })} />)
+
+    expect(screen.getByText('Deleted in about 5 h')).toBeTruthy()
+  })
 })

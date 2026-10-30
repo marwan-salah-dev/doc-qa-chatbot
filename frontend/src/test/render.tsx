@@ -52,6 +52,8 @@ export function makeWorkspace(overrides: Partial<Workspace> = {}): Workspace {
     name: 'Acme Dental',
     created_at: '2026-01-01T00:00:00Z',
     starter_questions: [],
+    is_demo: false,
+    expires_at: null,
     ...overrides,
   }
 }

@@ -1,9 +1,10 @@
 import 'react-pdf/dist/Page/TextLayer.css'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 
 import { highlightTextItem } from '@/lib/citationPreview'
+import { apiHeaders } from '@/lib/visitor'
 
 // Must be set in the module that renders react-pdf (see its README); Vite bundles the worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -24,6 +25,9 @@ interface PdfPagesProps {
 export default function PdfPages({ url, pages, passage }: PdfPagesProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const width = useWidth(container)
+  // pdf.js fetches the file itself, so it needs the visitor id header too. Memoized: a new
+  // object on each render would make react-pdf load the document again.
+  const file = useMemo(() => ({ url, httpHeaders: apiHeaders() }), [url])
   const renderText = useCallback(
     ({ str }: { str: string }) => highlightTextItem(str, passage),
     [passage],
@@ -32,7 +36,7 @@ export default function PdfPages({ url, pages, passage }: PdfPagesProps) {
   return (
     <div ref={setContainer} className="pdf-pages grid min-w-0 gap-3">
       <Document
-        file={url}
+        file={file}
         // react-pdf 11 throws load errors to Suspense/error boundaries by default; this keeps
         // them in the `loading` and `error` props below
         suspense={false}

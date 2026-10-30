@@ -103,3 +103,11 @@ def test_nginx_overwrites_the_client_ip_headers_instead_of_appending():
     assert "$proxy_add_x_forwarded_for" not in conf
     assert re.search(r"proxy_set_header\s+X-Forwarded-For\s+\$remote_addr;", api)
     assert re.search(r"proxy_set_header\s+X-Real-IP\s+\$remote_addr;", api)
+
+
+def test_the_compose_stack_is_the_public_demo_unless_switched_off():
+    # Step 18: ownership, read-only demo, expiry and limits. `PUBLIC_DEMO=false docker compose
+    # up` turns them off for a private client deployment.
+    backend = _compose()["services"]["backend"]
+
+    assert _environment(backend)["PUBLIC_DEMO"] == "${PUBLIC_DEMO:-true}"

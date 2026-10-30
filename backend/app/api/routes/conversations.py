@@ -8,7 +8,9 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.access import Access, AccessDep
 from app.api.deps import RagServiceDep, SessionFactory
+from app.api.limits import check_token_budget, limit_chat, limit_conversations
 from app.api.routes.workspaces import get_workspace_or_404
 from app.api.schemas import ConversationOut, MessageCreate, MessageOut
 from app.db.models import Conversation, Message
@@ -24,6 +26,7 @@ from app.services.chat import (
 )
 from app.services.llm import ChatMessage
 from app.services.rag import SourcesEvent
+from app.services.token_budget import TokenBudget
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/conversations", tags=["conversations"])
 
@@ -32,45 +35,64 @@ DbSession = Annotated[Session, Depends(get_db)]
 REPLY_BUSY = "A reply is already being written in this conversation."
 
 
-def get_conversation_or_404(db: Session, workspace_id: str, conversation_id: str) -> Conversation:
+def get_conversation_or_404(
+    db: Session, workspace_id: str, conversation_id: str, access: Access
+) -> Conversation:
+    """On the public demo a conversation belongs to the visitor who started it, even in the
+    shared demo workspace; anyone else gets a 404."""
+    get_workspace_or_404(db, workspace_id, access)
     conversation = db.get(Conversation, conversation_id)
-    if conversation is None or conversation.workspace_id != workspace_id:
+    if (
+        conversation is None
+        or conversation.workspace_id != workspace_id
+        or (access.restricted and conversation.owner_hash != access.owner_hash)
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     return conversation
 
 
-@router.post("", response_model=ConversationOut, status_code=status.HTTP_201_CREATED)
-def create_conversation(workspace_id: str, db: DbSession) -> Conversation:
+@router.post(
+    "",
+    response_model=ConversationOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(limit_conversations)],
+)
+def create_conversation(workspace_id: str, db: DbSession, access: AccessDep) -> Conversation:
     """An empty conversation; its title becomes the first question."""
-    get_workspace_or_404(db, workspace_id)
-    conversation = Conversation(workspace_id=workspace_id)
+    get_workspace_or_404(db, workspace_id, access)
+    conversation = Conversation(workspace_id=workspace_id, owner_hash=access.require_owner())
     db.add(conversation)
     db.commit()
     return conversation
 
 
 @router.get("", response_model=list[ConversationOut])
-def list_conversations(workspace_id: str, db: DbSession) -> list[Conversation]:
-    get_workspace_or_404(db, workspace_id)
-    return list(
-        db.scalars(
-            select(Conversation)
-            .where(Conversation.workspace_id == workspace_id)
-            .order_by(Conversation.created_at.desc())
-        )
+def list_conversations(workspace_id: str, db: DbSession, access: AccessDep) -> list[Conversation]:
+    get_workspace_or_404(db, workspace_id, access)
+    query = (
+        select(Conversation)
+        .where(Conversation.workspace_id == workspace_id)
+        .order_by(Conversation.created_at.desc())
     )
+    if access.restricted:
+        query = query.where(Conversation.owner_hash == access.owner_hash)
+    return list(db.scalars(query))
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_conversation(workspace_id: str, conversation_id: str, db: DbSession) -> Response:
-    db.delete(get_conversation_or_404(db, workspace_id, conversation_id))  # messages cascade
+def delete_conversation(
+    workspace_id: str, conversation_id: str, db: DbSession, access: AccessDep
+) -> Response:
+    db.delete(get_conversation_or_404(db, workspace_id, conversation_id, access))  # cascades
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessageOut])
-def list_messages(workspace_id: str, conversation_id: str, db: DbSession) -> list[Message]:
-    get_conversation_or_404(db, workspace_id, conversation_id)
+def list_messages(
+    workspace_id: str, conversation_id: str, db: DbSession, access: AccessDep
+) -> list[Message]:
+    get_conversation_or_404(db, workspace_id, conversation_id, access)
     return list(
         db.scalars(
             select(Message)
@@ -95,8 +117,10 @@ class ReplyTurn:
     stream: AsyncGenerator[ChatEvent, None] | None = None
 
 
-def get_reply_conversation(workspace_id: str, conversation_id: str, db: DbSession) -> Conversation:
-    return get_conversation_or_404(db, workspace_id, conversation_id)
+def get_reply_conversation(
+    workspace_id: str, conversation_id: str, db: DbSession, access: AccessDep
+) -> Conversation:
+    return get_conversation_or_404(db, workspace_id, conversation_id, access)
 
 
 async def reserve_reply(
@@ -130,13 +154,19 @@ def load_reply_turn(turn: Annotated[ReplyTurn, Depends(reserve_reply)], db: DbSe
     return turn
 
 
-@router.post("/{conversation_id}/messages", response_class=EventSourceResponse)
+# The limits run first, so a refused question costs no lookup, guard or LLM call
+@router.post(
+    "/{conversation_id}/messages",
+    response_class=EventSourceResponse,
+    dependencies=[Depends(limit_chat), Depends(check_token_budget)],
+)
 async def ask_question(
     workspace_id: str,
     body: MessageCreate,
     turn: Annotated[ReplyTurn, Depends(load_reply_turn)],
     rag: RagServiceDep,
     session_factory: SessionFactory,
+    request: Request,
 ) -> AsyncIterator[ServerSentEvent]:
     """Answer from the workspace's documents as Server-Sent Events.
 
@@ -152,6 +182,7 @@ async def ask_question(
         question=body.question,
         history=turn.history,
         asked_at=turn.asked_at,
+        on_usage=cast(TokenBudget, request.app.state.token_budget).record,
     )
     async for event in turn.stream:
         yield _to_sse(event)

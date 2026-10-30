@@ -1,6 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { ExternalLinkIcon } from 'lucide-react'
-import { Component, createContext, lazy, type ReactNode, Suspense, useContext } from 'react'
+import {
+  Component,
+  createContext,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useContext,
+  useState,
+} from 'react'
+import { toast } from 'sonner'
 
 import { api } from '@/api/client'
 import type { Citation } from '@/api/types'
@@ -74,37 +83,79 @@ export function CitationPreview({ citation }: { citation: Citation }) {
         )}
       </div>
 
-      {workspaceId && fileUrl && (
-        <OpenOriginal workspaceId={workspaceId} documentId={citation.document_id} url={fileUrl} />
+      {workspaceId && (
+        <OpenOriginal
+          workspaceId={workspaceId}
+          documentId={citation.document_id}
+          filename={citation.filename}
+        />
       )}
     </DialogContent>
   )
 }
 
-/** The link to the original file, shown only once the file is known to be there: a reseeded or
- * deleted document's original is gone, and a link to a 404 page looks broken. */
+// Long enough for the new tab to load the file; the tab keeps its copy after this
+const OBJECT_URL_LIFETIME_MS = 60_000
+
+/** Opens the original file in a new tab, shown only once the file is known to be there: a
+ * reseeded or deleted document's original is gone, and a link to a 404 page looks broken.
+ *
+ * A plain link can't send the visitor id header the API needs, so the file is fetched as a
+ * blob. The tab is opened first, synchronously in the click, because popup blockers refuse
+ * `window.open` once an `await` has passed; it is pointed at the blob when the fetch is done. */
 function OpenOriginal({
   workspaceId,
   documentId,
-  url,
+  filename,
 }: {
   workspaceId: string
   documentId: string
-  url: string
+  filename: string
 }) {
+  const [error, setError] = useState<string>()
   const exists = useQuery({
     queryKey: ['documents', workspaceId, documentId, 'exists'],
     queryFn: () => api.documents.fileExists(workspaceId, documentId),
     staleTime: 60_000,
   })
   if (exists.data !== true) return null
+
+  async function open() {
+    setError(undefined)
+    const tab = window.open('', '_blank')
+    if (tab) tab.opener = null // what rel="noopener" did for the link
+    try {
+      const url = URL.createObjectURL(await api.documents.fileBlob(workspaceId, documentId))
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, OBJECT_URL_LIFETIME_MS)
+      if (tab) {
+        tab.location.href = url
+      } else {
+        // Blocked even so: save the file instead, which blockers allow
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        link.click()
+      }
+    } catch (cause) {
+      tab?.close()
+      const message = cause instanceof Error ? cause.message : 'Could not open the file.'
+      setError(message)
+      toast.error(message)
+    }
+  }
+
   return (
-    <div className="flex justify-end border-t px-4 py-3">
-      <Button variant="outline" asChild>
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          <ExternalLinkIcon aria-hidden />
-          Open original
-        </a>
+    <div className="grid justify-items-end gap-2 border-t px-4 py-3">
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Button variant="outline" onClick={() => void open()}>
+        <ExternalLinkIcon aria-hidden />
+        Open original
       </Button>
     </div>
   )

@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api/client'
 import { CitationChip } from '@/components/CitationChip'
 import { CitationPreviewProvider } from '@/components/CitationPreview'
 import { makeCitation, renderWithProviders } from '@/test/render'
 
-const mocks = vi.hoisted(() => ({ fileText: vi.fn(), fileExists: vi.fn(), pdfFails: false }))
+const mocks = vi.hoisted(() => ({
+  fileText: vi.fn(),
+  fileExists: vi.fn(),
+  fileBlob: vi.fn(),
+  toastError: vi.fn(),
+  pdfFails: false,
+}))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>()
@@ -20,6 +28,7 @@ vi.mock('@/api/client', async (importOriginal) => {
         ...actual.api.documents,
         fileText: mocks.fileText,
         fileExists: mocks.fileExists,
+        fileBlob: mocks.fileBlob,
       },
     },
   }
@@ -66,9 +75,7 @@ describe('citation preview', () => {
     expect(within(dialog).getByRole('heading', { name: 'faq.txt' })).toBeTruthy()
     expect(within(dialog).getByText('lines 3–8')).toBeTruthy()
     expect(within(dialog).getByText('We are open Monday to Friday, 9am to 5pm.')).toBeTruthy()
-    expect(
-      (await within(dialog).findByRole('link', { name: /open original/i })).getAttribute('href'),
-    ).toBe('/api/workspaces/ws1/documents/d1/file')
+    expect(await within(dialog).findByRole('button', { name: /open original/i })).toBeTruthy()
     expect(mocks.fileExists).toHaveBeenCalledWith('ws1', 'd1')
   })
 
@@ -83,7 +90,7 @@ describe('citation preview', () => {
     })
     // Let the answer reach the component before checking that nothing appeared
     await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(within(dialog).queryByRole('link', { name: /open original/i })).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: /open original/i })).toBeNull()
   })
 
   it('hides "Open original" until the file is known to exist', async () => {
@@ -92,7 +99,84 @@ describe('citation preview', () => {
     renderChip()
     const { dialog } = await openPreview()
 
-    expect(within(dialog).queryByRole('link', { name: /open original/i })).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: /open original/i })).toBeNull()
+  })
+
+  describe('"Open original"', () => {
+    // A plain link can't send the X-Visitor-Id header, so the file is fetched as a blob. The tab
+    // is opened before that fetch, while the click still counts, so popup blockers allow it.
+    function fakeTab() {
+      return { opener: {} as unknown, location: { href: '' }, close: vi.fn() }
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:file') }))
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    async function clickOpen() {
+      mocks.fileText.mockResolvedValue('')
+      renderChip()
+      const { user, dialog } = await openPreview()
+      await user.click(await within(dialog).findByRole('button', { name: /open original/i }))
+      return dialog
+    }
+
+    it('opens a tab at once, then points it at the fetched file', async () => {
+      const tab = fakeTab()
+      const open = vi.fn(() => tab)
+      vi.stubGlobal('open', open)
+      mocks.fileBlob.mockResolvedValue(new Blob(['x']))
+
+      await clickOpen()
+
+      expect(open).toHaveBeenCalledWith('', '_blank')
+      await vi.waitFor(() => {
+        expect(tab.location.href).toBe('blob:file')
+      })
+      expect(tab.opener).toBeNull()
+      expect(mocks.fileBlob).toHaveBeenCalledWith('ws1', 'd1')
+    })
+
+    it('closes the tab and says why when the file cannot be fetched', async () => {
+      const tab = fakeTab()
+      vi.stubGlobal(
+        'open',
+        vi.fn(() => tab),
+      )
+      mocks.fileBlob.mockRejectedValue(new ApiError(404, 'Document not found'))
+
+      const dialog = await clickOpen()
+
+      await vi.waitFor(() => {
+        expect(tab.close).toHaveBeenCalled()
+      })
+      expect(within(dialog).getByRole('alert').textContent).toContain('Document not found')
+      expect(mocks.toastError).toHaveBeenCalled()
+    })
+
+    it('downloads the file instead when the tab is blocked', async () => {
+      vi.stubGlobal(
+        'open',
+        vi.fn(() => null),
+      )
+      mocks.fileBlob.mockResolvedValue(new Blob(['x']))
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined)
+
+      await clickOpen()
+
+      await vi.waitFor(() => {
+        expect(click).toHaveBeenCalled()
+      })
+      const anchor = click.mock.contexts[0] as HTMLAnchorElement
+      expect(anchor.download).toBe('faq.txt')
+      expect(anchor.href).toBe('blob:file')
+    })
   })
 
   it('opens a PDF at the cited pages', async () => {
