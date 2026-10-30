@@ -1,18 +1,75 @@
 # DocQA Support Agent
 
-An AI support agent that answers customer questions **only from a business's own documents**, with citations to the exact source file and page.
+An AI support agent that answers customer questions **only from a business's own documents**, with citations to the exact file, page, section or lines, and says so when the answer isn't there.
 
-> Status: Stage 1 in progress. Live demo and screenshots are coming soon; see [Quality](#quality) for evaluation results.
+<!-- Badges: add once the repo is on GitHub
+[![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/ci.yml)
+-->
 
-## Features (Stage 1)
+## Screenshots
+
+<!-- Replace each placeholder with an image (docs/screenshots/*.png) or GIF. -->
+
+| | |
+| --- | --- |
+| ![Chat](docs/screenshots/chat.png) <br> *TODO: a streamed answer with citation chips and the source list.* | ![Citation preview](docs/screenshots/citation-preview.png) <br> *TODO: the side panel open on a PDF page with the cited passage highlighted.* |
+| ![Refusal](docs/screenshots/refusal.png) <br> *TODO: a question the documents can't answer, showing the "not found" reply.* | ![Mobile](docs/screenshots/mobile.png) <br> *TODO: the layout on a 375 px phone.* |
+
+<!-- Demo GIF (60-90 s, script in docs/DEMO.md): ![Demo](docs/screenshots/demo.gif) -->
+
+## Features
 
 - Upload PDF, DOCX and TXT files into separate workspaces (one per business)
-- Ask questions in a chat and get streamed answers grounded in those documents
-- Citations show the source file and page (PDF), section (DOCX) or lines (TXT); click one to preview the passage
-- Says "I couldn't find that in the documents" instead of guessing
-- Switch between Anthropic and OpenAI models with one environment variable
+- Streamed answers grounded in those documents, with follow-up questions and saved chat history
+- Citations name the file and page (PDF), section and paragraphs (DOCX) or lines (TXT); click one to preview the passage in the original
+- Replies "I couldn't find that in the documents" instead of guessing
+- Anthropic or OpenAI-compatible chat models (including Groq) and local or OpenAI embeddings, each chosen with one environment variable
+- Public-demo mode: no login, private per-visitor workspaces, rate limits and a daily spend cap
+- Responsive, light/dark UI
 
 **Planned for Stage 2:** tool calling (book appointments, create support tickets) and an embeddable chat widget for any website.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    B["Browser<br/>React + TypeScript"] -->|"/api, SSE"| N["nginx<br/>web container"]
+    N --> A["FastAPI<br/>backend container, 1 worker"]
+    A --> S[("SQLite<br/>workspaces, chats")]
+    A --> F[("Original files<br/>for preview")]
+    A --> C[("Chroma<br/>embedded vector store")]
+    A --> E["Embedder<br/>local bge-small or OpenAI"]
+    A --> L["Chat model<br/>Anthropic or OpenAI-compatible"]
+```
+
+How a document becomes an answer:
+
+```mermaid
+flowchart LR
+    subgraph Upload
+        direction LR
+        U1["PDF / DOCX / TXT"] --> U2[Parse] --> U3["Section-aware chunks"] --> U4[Embed] --> U5["Store in Chroma"]
+    end
+    subgraph Question
+        direction LR
+        Q1[Question] --> Q2["Retrieve top chunks"] --> Q3{"Score over threshold?"}
+        Q3 -->|no| Q4["Refuse, no LLM call"]
+        Q3 -->|yes| Q5["LLM answers with numbered sources"] --> Q6["Keep only cited sources"]
+    end
+```
+
+## Key engineering decisions
+
+| Decision | Why |
+| --- | --- |
+| **Section-aware chunking**: a heading's section stays in one chunk and is split into token windows only when too long | Answers and citations land on a whole policy or price table, not half of one |
+| **Citations**: sources are numbered `[n]` in the prompt, only cited ones come back, and they are renumbered 1, 2, 3 by first use | Every claim can be checked against the exact place it came from, and invented citations are dropped |
+| **Similarity threshold plus an LLM refusal rule** (`RAG_MIN_SCORE`) | Off-topic questions cost no LLM call, and the model's rule catches in-domain questions the documents don't cover |
+| **Visitor ownership without login** (`X-Visitor-Id`, stored only as a SHA-256; other people's items return 404) | A public demo where visitors can't see each other's uploads, with no sign-up friction (`PUBLIC_DEMO=true` only) |
+| **In-process rate limits and a daily token cap** instead of a rate-limit library | One worker means in-memory is correct, it avoids extra dependencies, and the cap keeps a free-tier key from being drained (`PUBLIC_DEMO=true` only) |
+| **CPU-only Docker for a 2 GB VPS**: CPU torch, the model baked into the image, one uvicorn worker, embedded Chroma | No multi-GB GPU packages, no model download at start-up, and two containers that fit in 2 GB |
+| **Provider interfaces with fake implementations** | The whole test suite runs without API keys or network, so CI needs no secrets |
+| **pypdf instead of PyMuPDF** | BSD-licensed, so clients can reuse the code without AGPL obligations |
 
 ## Quality
 
@@ -41,27 +98,7 @@ uv run python -m eval.answers --run  # real LLM, small subset, 60 s apart for Gr
 
 **Known gap: non-English questions.** The default local embedder is English-only. The cheapest fix is `EMBEDDING_PROVIDER=openai`, which is already supported. `intfloat/multilingual-e5-small` (MIT) would run locally, but it roughly doubles the backend's memory, and every workspace would have to be re-indexed and the threshold re-checked.
 
-## Tech stack
-
-| Layer | Choice |
-| --- | --- |
-| API | Python 3.12, FastAPI |
-| Retrieval | ChromaDB, sentence-transformers or OpenAI embeddings |
-| LLM | Anthropic or OpenAI (`LLM_PROVIDER`) |
-| Frontend | React, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query |
-| Tests | pytest, Vitest |
-| Deploy | Docker Compose |
-
-## Project layout
-
-```
-backend/    FastAPI app, tests, demo documents (demo_data/) and their scripts (scripts/)
-frontend/   React app
-scripts/    dev.ps1: start everything locally and seed the demo
-docs/       plan and demo script
-```
-
-## Development
+## Run locally
 
 Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), Node 20.19+ or 22.12+ (required by Vite 8).
 
@@ -133,3 +170,53 @@ The compose stack runs as a public, login-free demo (`PUBLIC_DEMO=true`). For a 
 - **Caps:** documents per workspace, total upload storage, and the sections per document (checked before anything is embedded). There is also a **daily LLM token cap** (`DAILY_TOKEN_CAP`, 150K by default, below Groq's free 200K/day). Once it's reached, questions get "The demo has reached its daily question limit" until midnight UTC, without calling the LLM. A provider's own 429 shows as "The assistant is busy".
 
 Every limit is set in `backend/.env.example`, and 0 turns one off.
+
+## Configuration
+
+Everything is configured with environment variables in `backend/.env` (copy `backend/.env.example`, which documents every setting). The main ones:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` (also any OpenAI-compatible API through `OPENAI_BASE_URL`, such as Groq) |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | empty | Only the selected provider's key is required |
+| `EMBEDDING_PROVIDER` | `local` | `local` (bge-small on CPU, free) or `openai` (low memory) |
+| `RAG_MIN_SCORE` | `0.45` | Similarity a chunk needs to count as relevant; below it the app refuses without calling the LLM |
+| `MAX_UPLOAD_MB` | `20` | Largest accepted upload (the reverse proxy should enforce it too) |
+| `PUBLIC_DEMO` | `false` | Turns on visitor ownership, the read-only demo workspace, expiry, rate limits and the token cap |
+| `ADMIN_API_KEY` | empty | Needed to seed the read-only demo workspace in public-demo mode |
+| `DAILY_TOKEN_CAP` | `150000` | Most LLM tokens per UTC day in public-demo mode |
+
+The frontend needs no configuration in development (`frontend/.env.example` explains `VITE_API_BASE_URL`).
+
+## Known limitations
+
+- **English-only embeddings by default.** Non-English questions often retrieve the wrong section (see [Quality](#quality)). `EMBEDDING_PROVIDER=openai` is the cheapest fix.
+- **PDF headings are detected from fonts.** Headings set larger or bold are found. Fake bold (outlined text) and headings that look like body text are not, and a PDF with one font size and weight becomes a single section, so its citations only name the page.
+- **No OCR:** scanned, image-only PDFs are rejected with a clear message.
+- **One backend worker by design** (SQLite, embedded Chroma and the in-process guards). Scaling out means replacing those first.
+- **Rate limits live in memory,** so a restart resets them.
+
+## Tech stack
+
+| Layer | Choice |
+| --- | --- |
+| API | Python 3.12, FastAPI |
+| Retrieval | ChromaDB, sentence-transformers or OpenAI embeddings |
+| LLM | Anthropic or OpenAI-compatible (`LLM_PROVIDER`) |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query |
+| Tests and CI | pytest, Vitest, ruff, pyright, ESLint, GitHub Actions |
+| Deploy | Docker Compose |
+
+## Project layout
+
+```
+backend/    FastAPI app, tests, eval, demo documents (demo_data/) and their scripts (scripts/)
+frontend/   React app
+scripts/    dev.ps1: start everything locally and seed the demo
+docs/       plan and demo script
+.github/    CI workflow
+```
+
+## Licence
+
+[MIT](LICENSE)

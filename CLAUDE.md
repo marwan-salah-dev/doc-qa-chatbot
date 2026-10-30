@@ -25,6 +25,7 @@ Stack: Python 3.12 + FastAPI, ChromaDB, OpenAI or Anthropic (`LLM_PROVIDER`), lo
 backend/    FastAPI app (app/), tests (tests/), demo docs (demo_data/) and their scripts (scripts/), managed with uv
 frontend/   React app (src/), Vite + TypeScript, managed with npm
 scripts/    dev.ps1: start backend + frontend and seed the demo
+.github/    workflows/ci.yml: GitHub Actions (backend, frontend, docker build)
 docker-compose.yml, backend/Dockerfile, frontend/Dockerfile + nginx.conf: the production-style stack
 docs/       PLAN.md, DEMO.md (recording script) and other project docs
 ```
