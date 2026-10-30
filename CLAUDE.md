@@ -25,6 +25,7 @@ Stack: Python 3.12 + FastAPI, ChromaDB, OpenAI or Anthropic (`LLM_PROVIDER`), lo
 backend/    FastAPI app (app/), tests (tests/), demo docs (demo_data/) and their scripts (scripts/), managed with uv
 frontend/   React app (src/), Vite + TypeScript, managed with npm
 scripts/    dev.ps1: start backend + frontend and seed the demo
+docker-compose.yml, backend/Dockerfile, frontend/Dockerfile + nginx.conf: the production-style stack
 docs/       PLAN.md, DEMO.md (recording script) and other project docs
 ```
 
@@ -54,6 +55,17 @@ npm run typecheck         # tsc -b (strict)
 npm run format            # Prettier (format:check to verify only)
 npm run build             # production build into frontend/dist
 ```
+
+Run these from the repo root (Docker, production-style, app on http://127.0.0.1:8080):
+
+```bash
+docker compose up -d --build      # build and start backend + web (needs backend/.env)
+docker compose exec backend python -m scripts.seed_demo --api-url http://127.0.0.1:8000 --ui-url http://127.0.0.1:8080
+docker compose logs -f backend    # follow the API's logs
+docker compose down               # stop; data stays in the docqa_backend-data volume (down -v wipes it)
+```
+
+The backend runs exactly one uvicorn worker (SQLite, embedded Chroma, the model lock and the reply guard are in-process), has no host port (only `web` reaches it) and trusts `X-Forwarded-For` only from the pinned compose subnet. nginx overwrites that header. `backend/tests/test_docker_config.py` guards these.
 
 From the repo root, `powershell -ExecutionPolicy Bypass -File scripts\dev.ps1` starts both servers in their own windows, waits for `/health`, then seeds the demo (Ctrl+C stops both; servers already running are reused). Otherwise start the backend first, then the frontend, each in its own terminal. Long-running servers (uvicorn, `npm run dev`) should be started in the background, never in the foreground.
 

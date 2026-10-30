@@ -75,3 +75,22 @@ Demo workspace (with the backend running):
 cd backend
 uv run python -m scripts.seed_demo
 ```
+
+## Run with Docker
+
+Production-style: two containers sized for a 2 GB server. `backend` runs FastAPI with embedded Chroma and the bge-small model baked into the image, and `web` runs nginx, which serves the built React app and proxies `/api` with streaming unbuffered. Requirements: Docker with Compose v2.
+
+```bash
+cp backend/.env.example backend/.env    # then fill in your API key (the only file you need to edit)
+docker compose up -d --build            # first build downloads CPU-only PyTorch and the model: several minutes
+docker compose exec backend python -m scripts.seed_demo --api-url http://127.0.0.1:8000 --ui-url http://127.0.0.1:8080
+```
+
+Open http://127.0.0.1:8080.
+
+- **Data** (SQLite, the Chroma index and uploaded files) lives in the named volume `docqa_backend-data`. `docker compose down` followed by `docker compose up -d` keeps it, and `docker compose down -v` deletes it.
+- **Secrets** come only from `backend/.env` at runtime (`env_file`). `.dockerignore` keeps `.env` out of both images.
+- **Memory:** the limits are 1200 MB for the backend and 64 MB for web. Measured: the backend uses about 230 MB idle, 600-780 MB once the embedding model is loaded and indexing, and web about 15 MB.
+- **Low-memory option:** set `EMBEDDING_PROVIDER=openai` in `backend/.env` (needs `OPENAI_API_KEY`). The local model and PyTorch are then never loaded, so the backend stays at a few hundred MB. Existing documents need a re-index after switching.
+- **One worker on purpose:** SQLite, embedded Chroma, the model lock and the one-reply-per-conversation guard all live in a single process, so don't scale the backend to more than one worker or replica.
+- Logs: `docker compose logs -f backend`. Stop: `docker compose down`.

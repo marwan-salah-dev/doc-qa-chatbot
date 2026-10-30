@@ -1,0 +1,15 @@
+# Secrets: they reach the container only at runtime, through compose's env_file
+.env
+.env.*
+!.env.example
+
+# Local state and tooling
+data/
+.venv/
+.git
+tests/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

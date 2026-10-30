@@ -1,0 +1,60 @@
+# Production-style stack for a 2 GB VPS: `docker compose up -d --build`, then open
+# http://127.0.0.1:8080. Only backend/.env needs filling in (copy backend/.env.example).
+# Step 21 adds Caddy (HTTPS) on this network, proxying to web:8080, and drops web's host port.
+name: docqa
+
+services:
+  backend:
+    build: ./backend
+    image: docqa-backend
+    # Secrets (API keys) arrive only here, at runtime; they are never baked into the image
+    env_file: backend/.env
+    # Non-secret overrides; these win over the same names in backend/.env
+    environment:
+      DATA_DIR: /app/data
+      # Embedded Chroma in DATA_DIR: one fewer container on a 2 GB box
+      CHROMA_HOST: ""
+      # Only the web proxy on this network may set the client IP (see networks below)
+      FORWARDED_ALLOW_IPS: 172.28.0.0/24
+      # Fewer glibc malloc arenas and torch threads: less resident memory for one worker
+      MALLOC_ARENA_MAX: "2"
+      OMP_NUM_THREADS: "2"
+    volumes:
+      # SQLite, the Chroma store and uploaded originals; survives `down`/`up` (not `down -v`)
+      - backend-data:/app/data
+    # No ports: only the web container reaches the API
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1200m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  web:
+    build: ./frontend
+    image: docqa-web
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    logging: *logging
+
+networks:
+  default:
+    # Pinned so the backend's FORWARDED_ALLOW_IPS can name it
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  backend-data:

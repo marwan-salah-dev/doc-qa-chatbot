@@ -1,0 +1,10 @@
+# Secrets and local overrides never go into the image
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+coverage
+.git
+*.tsbuildinfo
