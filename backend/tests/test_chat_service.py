@@ -9,10 +9,8 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-import chromadb
 import pytest
 from chat_helpers import MIN_SCORE, QUESTION, BlockingChat, seed_documents
-from chromadb.config import Settings as ChromaSettings
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,7 +20,7 @@ from app.services.chat import ChatEvent, stream_reply
 from app.services.embeddings import FakeEmbedder
 from app.services.llm import ChatModel, FakeChat
 from app.services.rag import DeltaEvent, RagService, SourcesEvent
-from app.services.vectorstore import ChromaVectorStore
+from app.services.vectorstore import ChromaVectorStore, create_persistent_chroma_client
 
 pytestmark = pytest.mark.anyio
 
@@ -51,9 +49,7 @@ def conversation_id(session_factory: sessionmaker[Session]) -> str:
 
 @pytest.fixture
 def store(tmp_path: Path) -> ChromaVectorStore:
-    client = chromadb.PersistentClient(
-        path=str(tmp_path / "chroma"), settings=ChromaSettings(anonymized_telemetry=False)
-    )
+    client = create_persistent_chroma_client(tmp_path / "chroma")
     store = ChromaVectorStore(client, FakeEmbedder(dimension=256))
     seed_documents(store, WS)
     return store

@@ -1,10 +1,8 @@
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
-import chromadb
 import pytest
 from chat_helpers import ScriptedChat
-from chromadb.config import Settings as ChromaSettings
 
 from app.services.chunking import Chunk
 from app.services.embeddings import FakeEmbedder
@@ -29,7 +27,12 @@ from app.services.rag import (
     strip_citation_markers,
     trim_history,
 )
-from app.services.vectorstore import ChromaVectorStore, SearchHit, StoredChunk
+from app.services.vectorstore import (
+    ChromaVectorStore,
+    SearchHit,
+    StoredChunk,
+    create_persistent_chroma_client,
+)
 
 pytestmark = pytest.mark.anyio
 
@@ -55,9 +58,7 @@ def anyio_backend() -> str:
 
 @pytest.fixture
 def store(tmp_path: Path) -> ChromaVectorStore:
-    client = chromadb.PersistentClient(
-        path=str(tmp_path / "chroma"), settings=ChromaSettings(anonymized_telemetry=False)
-    )
+    client = create_persistent_chroma_client(tmp_path / "chroma")
     store = ChromaVectorStore(client, FakeEmbedder(dimension=256))
     store.add_chunks(
         WS,

@@ -1,10 +1,8 @@
 from collections.abc import Callable
 from pathlib import Path
 
-import chromadb
 import pytest
 from chromadb.api import ClientAPI
-from chromadb.config import Settings as ChromaSettings
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_chat_model, get_embedder, get_vector_store
@@ -12,14 +10,12 @@ from app.config import Settings
 from app.main import create_app
 from app.services.embeddings import Embedder, FakeEmbedder
 from app.services.llm import ChatModel, FakeChat
-from app.services.vectorstore import ChromaVectorStore, VectorStore
+from app.services.vectorstore import ChromaVectorStore, VectorStore, create_persistent_chroma_client
 
 
 @pytest.fixture
 def api_chroma(tmp_path: Path) -> ClientAPI:
-    return chromadb.PersistentClient(
-        path=str(tmp_path / "test-chroma"), settings=ChromaSettings(anonymized_telemetry=False)
-    )
+    return create_persistent_chroma_client(tmp_path / "test-chroma")
 
 
 @pytest.fixture

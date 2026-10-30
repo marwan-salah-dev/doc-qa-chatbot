@@ -1,15 +1,15 @@
 import re
 from pathlib import Path
 
-import chromadb
 import pytest
 from chromadb.api import ClientAPI
-from chromadb.config import Settings as ChromaSettings
+from chromadb.api.client import Client
+from chromadb.api.rust import RustBindingsAPI
 
 from app.services.chunking import Chunk
 from app.services.embeddings import FakeEmbedder
 from app.services.parsers import Location
-from app.services.vectorstore import ChromaVectorStore, SearchHit
+from app.services.vectorstore import ChromaVectorStore, SearchHit, create_persistent_chroma_client
 
 WS = "a" * 32
 WS2 = "b" * 32
@@ -64,9 +64,7 @@ def txt_chunk(text: str, index: int = 0) -> Chunk:
 
 @pytest.fixture
 def chroma_client(tmp_path: Path) -> ClientAPI:
-    return chromadb.PersistentClient(
-        path=str(tmp_path / "chroma"), settings=ChromaSettings(anonymized_telemetry=False)
-    )
+    return create_persistent_chroma_client(tmp_path / "chroma")
 
 
 @pytest.fixture
@@ -202,6 +200,30 @@ def test_workspaces_are_isolated(store: ChromaVectorStore):
 
     assert texts(store.query(WS, "refund policy", k=10)) == ["refund policy for acme"]
     assert texts(store.query(WS2, "refund policy", k=10)) == ["refund policy for globex"]
+
+
+def test_embedded_client_gets_the_large_hnsw_index_pool(chroma_client: ClientAPI):
+    # Guards the RustBindingsAPI patch on every OS: the workspace test below only overflows the
+    # stock pool where the file-handle limit is low (Windows), so on Linux it passes without it.
+    # start() hands hnsw_cache_size straight to the Rust pool, which Python can't inspect.
+    assert isinstance(chroma_client, Client)
+    server = chroma_client._server
+    assert isinstance(server, RustBindingsAPI)
+    assert server.hnsw_cache_size == 65536
+
+
+def test_many_small_workspaces_stay_queryable(store: ChromaVectorStore):
+    # Chroma keeps an index under 1000 vectors only in memory, and the stock embedded client sizes
+    # that pool from the file-handle limit (102 slots on Windows). An evicted index is never
+    # written to disk, so its workspace then fails with "Nothing found on disk".
+    workspaces = [f"{i:032x}" for i in range(150)]
+    for workspace_id in workspaces:
+        store.add_chunks(workspace_id, DOC, "faq.txt", [txt_chunk(f"refund policy {workspace_id}")])
+
+    for workspace_id in workspaces:
+        assert texts(store.query(workspace_id, "refund policy")) == [
+            f"refund policy {workspace_id}"
+        ]
 
 
 def test_re_adding_a_document_replaces_its_old_chunks(store: ChromaVectorStore):
