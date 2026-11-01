@@ -1,21 +1,17 @@
 # DocQA Support Agent
 
-An AI support agent that answers customer questions **only from a business's own documents**, with citations to the exact file, page, section or lines, and says so when the answer isn't there.
+[![CI](https://github.com/marwan-salah-dev/doc-qa-chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/marwan-salah-dev/doc-qa-chatbot/actions/workflows/ci.yml)
 
-<!-- Badges: add once the repo is on GitHub
-[![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/ci.yml)
--->
+An AI support agent that answers customer questions **only from a business's own documents**, with citations to the exact file, page, section or lines, and says so when the answer isn't there.
 
 ## Screenshots
 
-<!-- Replace each placeholder with an image (docs/screenshots/*.png) or GIF. -->
+|                                                                                                     |                                                                                                                  |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| ![Chat](docs/screenshots/chat.png) <br> _A streamed answer and a follow-up, with citations and sources._ | ![Citation preview](docs/screenshots/citation-preview.png) <br> _The cited passage highlighted on the PDF page._ |
+| ![Refusal](docs/screenshots/refusal.png) <br> _A question the documents can't answer gets a clear refusal._ | ![Mobile](docs/screenshots/mobile.png) <br> _The phone layout._                                                  |
 
-|                                                                                                                             |                                                                                                                                               |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Chat](docs/screenshots/chat.png) <br> _TODO: a streamed answer with citation chips and the source list._                  | ![Citation preview](docs/screenshots/citation-preview.png) <br> _TODO: the side panel open on a PDF page with the cited passage highlighted._ |
-| ![Refusal](docs/screenshots/refusal.png) <br> _TODO: a question the documents can't answer, showing the "not found" reply._ | ![Mobile](docs/screenshots/mobile.png) <br> _TODO: the layout on a 375 px phone._                                                             |
-
-<!-- Demo GIF (60-90 s, script in docs/DEMO.md): ![Demo](docs/screenshots/demo.gif) -->
+<!-- demo video added via GitHub web editor -->
 
 ## Features
 
