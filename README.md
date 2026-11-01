@@ -9,7 +9,7 @@ An AI support agent that answers customer questions **only from a business's own
 |                                                                                                     |                                                                                                                  |
 | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | ![Chat](docs/screenshots/chat.png) <br> _A streamed answer and a follow-up, with citations and sources._ | ![Citation preview](docs/screenshots/citation-preview.png) <br> _The cited passage highlighted on the PDF page._ |
-| ![Refusal](docs/screenshots/refusal.png) <br> _A question the documents can't answer gets a clear refusal._ | ![Mobile](docs/screenshots/mobile.png) <br> _The phone layout._                                                  |
+| ![Refusal](docs/screenshots/refusal.png) <br> _A question the documents can't answer gets a clear refusal._ | <img src="docs/screenshots/mobile.png" alt="Mobile" width="200"> <br> _The phone layout._                         |
 
 <!-- demo video added via GitHub web editor -->
 
